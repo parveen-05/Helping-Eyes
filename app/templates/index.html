@@ -4,84 +4,204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Helping Eyes</title>
+
     <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
 
-    <header>
+    <div class="container">
+
         <h1>Helping Eyes</h1>
-        <p>Your AI-powered assistive reading companion</p>
-    </header>
 
-    <main>
-        <section>
-            <h2>Welcome to Helping Eyes</h2>
+        <p>Upload an image or use your camera to extract and understand text.</p>
 
-            <p>Upload an image to extract and understand its text.</p>
 
-            <div class="upload-container">
+        <!-- ================================= -->
+        <!-- LIVE CAMERA SECTION -->
+        <!-- ================================= -->
 
-                <input type="file" id="imageInput" accept="image/*">
+        <div class="camera-container">
 
-                <button id="uploadButton">
-                    Upload Image
+            <h3>Live Camera</h3>
+
+            <p>Use your camera to capture text directly.</p>
+
+            <!-- Live Camera Preview -->
+            <video id="cameraPreview" autoplay playsinline muted style="display: none;">
+            </video>
+
+            <!-- Hidden Canvas for Image Capture -->
+            <canvas id="cameraCanvas" style="display: none;">
+            </canvas>
+
+
+            <!-- Camera Controls -->
+            <div class="camera-controls">
+
+                <button id="startCameraButton">
+                    Start Camera
                 </button>
 
-                <p id="uploadStatus" aria-live="polite"></p>
+                <button id="captureButton" disabled>
+                    Capture Image
+                </button>
 
-                <!-- Image Quality Report -->
-                <div id="qualityResult" class="quality-result" style="display: none;">
+                <button id="stopCameraButton" disabled>
+                    Stop Camera
+                </button>
 
-                    <h3>Image Quality Report</h3>
+            </div>
 
-                    <p id="qualityStatus"></p>
 
-                    <div class="quality-metrics">
-                        <div class="metric">
-                            <span>Sharpness</span>
-                            <strong id="sharpnessValue">-</strong>
-                        </div>
+            <!-- Camera Status -->
+            <p id="cameraStatus" aria-live="polite"></p>
 
-                        <div class="metric">
-                            <span>Brightness</span>
-                            <strong id="brightnessValue">-</strong>
-                        </div>
 
-                        <div class="metric">
-                            <span>Contrast</span>
-                            <strong id="contrastValue">-</strong>
-                        </div>
+            <!-- ================================= -->
+            <!-- CAPTURED IMAGE PREVIEW -->
+            <!-- ================================= -->
 
-                        <div class="metric">
-                            <span>Glare</span>
-                            <strong id="glareValue">-</strong>
-                        </div>
-                    </div>
+            <div class="captured-image-container">
 
-                    <h4>Detected Problems</h4>
-                    <ul id="qualityProblems"></ul>
+                <h4>Captured Image</h4>
 
-                    <h4>Suggestion</h4>
-                    <p id="qualitySuggestion"></p>
+                <img id="capturedPreview" alt="Captured camera image" style="display: none;">
 
-                    <p id="qualitySummary" class="quality-summary"></p>
+                <button id="uploadCapturedButton" disabled>
+                    Upload Captured Image
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- ================================= -->
+        <!-- IMAGE UPLOAD SECTION -->
+        <!-- ================================= -->
+
+        <div class="upload-container">
+
+            <h3>Upload Image</h3>
+
+            <input type="file" id="imageInput" accept="image/*">
+
+            <button id="uploadButton">
+                Upload and Extract Text
+            </button>
+
+            <p id="status" aria-live="polite"></p>
+
+        </div>
+
+
+        <!-- ================================= -->
+        <!-- IMAGE QUALITY REPORT -->
+        <!-- ================================= -->
+
+        <div id="qualitySection" style="display: none;">
+
+            <h2>Image Quality Report</h2>
+
+            <p id="qualityStatus"></p>
+
+
+            <!-- Quality Measurements -->
+            <div class="quality-metrics">
+
+                <div class="metric">
+
+                    <h4>Sharpness</h4>
+
+                    <p id="sharpnessValue">-</p>
 
                 </div>
 
-                <!-- OCR Result Section -->
-                <div id="ocrResult" class="ocr-result" style="display: none;">
 
-                    <h3>Extracted Text</h3>
+                <div class="metric">
 
-                    <pre id="extractedText"></pre>
+                    <h4>Brightness</h4>
+
+                    <p id="brightnessValue">-</p>
+
+                </div>
+
+
+                <div class="metric">
+
+                    <h4>Contrast</h4>
+
+                    <p id="contrastValue">-</p>
+
+                </div>
+
+
+                <div class="metric">
+
+                    <h4>Glare</h4>
+
+                    <p id="glareValue">-</p>
 
                 </div>
 
             </div>
-        </section>
-    </main>
+
+
+            <!-- Detected Problems -->
+            <div class="quality-problems">
+
+                <h3>Detected Problems</h3>
+
+                <ul id="qualityProblems"></ul>
+
+            </div>
+
+
+            <!-- Suggestions -->
+            <div class="quality-suggestion">
+
+                <h3>Suggestion</h3>
+
+                <p id="qualitySuggestion"></p>
+
+            </div>
+
+
+            <!-- Quality Summary -->
+            <div class="quality-summary">
+
+                <h3>Summary</h3>
+
+                <p id="qualitySummary"></p>
+
+            </div>
+
+        </div>
+
+
+        <!-- ================================= -->
+        <!-- OCR RESULT SECTION -->
+        <!-- ================================= -->
+
+        <div id="resultSection">
+
+            <h2>Extracted Text</h2>
+
+            <div id="result">
+                Your extracted text will appear here.
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================= -->
+    <!-- JAVASCRIPT -->
+    <!-- ================================= -->
 
     <script src="/static/app.js"></script>
 

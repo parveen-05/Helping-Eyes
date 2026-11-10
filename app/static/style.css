@@ -1,198 +1,385 @@
+/* =============================================
+   HELPING EYES - GLOBAL STYLES
+============================================= */
+
 * {
-    margin: 0;
-    padding: 0;
     box-sizing: border-box;
 }
 
 body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f7fb;
+    margin: 0;
+    padding: 30px 15px;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f4f6f9;
     color: #222;
+    line-height: 1.6;
 }
 
-header {
-    background-color: #263b80;
-    color: white;
-    text-align: center;
-    padding: 30px 20px;
-}
-
-header h1 {
-    font-size: 32px;
-    margin-bottom: 10px;
-}
-
-header p {
-    font-size: 16px;
-}
-
-main {
+.container {
+    width: 100%;
     max-width: 900px;
-    margin: 50px auto;
-    padding: 20px;
-}
-
-section {
-    background-color: white;
-    padding: 40px;
+    margin: 0 auto;
+    padding: 30px;
+    background: #ffffff;
     border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
+}
+
+h1 {
+    margin-top: 0;
+    color: #1e3a8a;
     text-align: center;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.08);
 }
 
-section h2 {
-    margin-bottom: 15px;
-    color: #263b80;
+h2 {
+    color: #1e3a8a;
 }
 
-.upload-container {
-    margin-top: 30px;
+h3 {
+    color: #263b60;
 }
 
-#imageInput {
-    display: block;
-    margin: 20px auto;
-    max-width: 100%;
+p {
+    color: #555;
 }
 
-#uploadButton {
-    background-color: #263b80;
-    color: white;
+
+/* =============================================
+   BUTTONS
+============================================= */
+
+button {
+    padding: 11px 18px;
     border: none;
-    padding: 12px 25px;
     border-radius: 6px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
-    font-size: 16px;
+    transition: background 0.2s ease;
 }
 
-#uploadButton:hover {
-    background-color: #1b2d65;
+button:hover:not(:disabled) {
+    background: #1d4ed8;
 }
 
-#uploadButton:disabled {
-    opacity: 0.6;
+button:disabled {
+    background: #999999;
     cursor: not-allowed;
 }
 
-#uploadStatus {
-    margin-top: 20px;
+
+/* =============================================
+   LIVE CAMERA SECTION
+============================================= */
+
+.camera-container {
+    margin: 30px 0;
+    padding: 22px;
+    border: 1px solid #dce3ed;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.camera-container h3 {
+    margin-top: 0;
+}
+
+.camera-container p {
+    margin-bottom: 15px;
+}
+
+
+/* Camera Preview */
+
+#cameraPreview {
+    width: 100%;
+    max-width: 650px;
+    max-height: 450px;
+    margin: 20px auto;
+    background: #111111;
+    border-radius: 10px;
+    object-fit: contain;
+}
+
+
+/* Camera Controls */
+
+.camera-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+#startCameraButton {
+    background: #2563eb;
+}
+
+#captureButton {
+    background: #16a34a;
+}
+
+#captureButton:hover:not(:disabled) {
+    background: #15803d;
+}
+
+#stopCameraButton {
+    background: #dc2626;
+}
+
+#stopCameraButton:hover:not(:disabled) {
+    background: #b91c1c;
+}
+
+
+/* Camera Status */
+
+#cameraStatus {
+    margin-top: 15px;
+    font-weight: 600;
+    color: #334155;
+}
+
+
+/* =============================================
+   CAPTURED IMAGE PREVIEW
+============================================= */
+
+.captured-image-container {
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px solid #dce3ed;
+}
+
+.captured-image-container h4 {
+    color: #263b60;
+    margin-bottom: 12px;
+}
+
+#capturedPreview {
+    width: 100%;
+    max-width: 550px;
+    max-height: 400px;
+    margin: 15px 0;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #eeeeee;
+    object-fit: contain;
+}
+
+#uploadCapturedButton {
+    background: #16a34a;
+}
+
+#uploadCapturedButton:hover:not(:disabled) {
+    background: #15803d;
+}
+
+
+/* =============================================
+   IMAGE UPLOAD SECTION
+============================================= */
+
+.upload-container {
+    margin: 30px 0;
+    padding: 22px;
+    border: 1px solid #dce3ed;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.upload-container h3 {
+    margin-top: 0;
+}
+
+input[type="file"] {
+    display: block;
+    width: 100%;
+    margin: 15px 0;
+    padding: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #f9fafb;
+}
+
+#uploadButton {
+    background: #2563eb;
+}
+
+#uploadButton:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+#status {
+    margin-top: 15px;
+    font-weight: 500;
     overflow-wrap: anywhere;
 }
 
-/* Image Quality Report */
 
-.quality-result {
+/* =============================================
+   IMAGE QUALITY REPORT
+============================================= */
+
+#qualitySection {
     margin-top: 30px;
-    padding: 25px;
-    background-color: #f8faff;
-    border: 1px solid #dce4f5;
+    padding: 22px;
+    border: 1px solid #dce3ed;
     border-radius: 10px;
-    text-align: left;
+    background: #f8fafc;
 }
 
-.quality-result h3 {
-    color: #263b80;
-    margin-bottom: 15px;
-    text-align: center;
+#qualitySection h2 {
+    margin-top: 0;
+}
+
+
+/* Quality Status */
+
+#qualityStatus {
+    font-weight: 600;
 }
 
 .quality-good {
-    color: #187442;
-    font-weight: bold;
-    text-align: center;
-    margin-bottom: 20px;
+    color: #15803d;
 }
 
 .quality-warning {
     color: #b45309;
-    font-weight: bold;
-    text-align: center;
-    margin-bottom: 20px;
 }
+
+
+/* Quality Measurements */
 
 .quality-metrics {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
     margin: 20px 0;
 }
 
 .metric {
-    background-color: white;
-    border: 1px solid #e1e6ef;
+    padding: 15px 10px;
+    border: 1px solid #e2e8f0;
     border-radius: 8px;
-    padding: 15px;
+    background: #ffffff;
     text-align: center;
 }
 
-.metric span {
-    display: block;
-    color: #666;
-    font-size: 14px;
-    margin-bottom: 8px;
+.metric h4 {
+    margin: 0 0 8px;
+    color: #475569;
 }
 
-.metric strong {
-    color: #263b80;
-    font-size: 20px;
+.metric p {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e3a8a;
+    overflow-wrap: anywhere;
 }
 
-.quality-result h4 {
+
+/* Quality Problems */
+
+.quality-problems,
+.quality-suggestion,
+.quality-summary {
     margin-top: 20px;
-    margin-bottom: 10px;
-    color: #263b80;
+    padding: 15px;
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+}
+
+.quality-problems h3,
+.quality-suggestion h3,
+.quality-summary h3 {
+    margin-top: 0;
+    font-size: 17px;
 }
 
 #qualityProblems {
     padding-left: 22px;
-    line-height: 1.7;
-    text-transform: capitalize;
 }
 
-#qualitySuggestion {
-    line-height: 1.6;
+#qualityProblems li {
+    margin-bottom: 6px;
+    color: #b45309;
 }
 
-.quality-summary {
-    margin-top: 20px;
-    padding-top: 15px;
-    border-top: 1px solid #dce4f5;
-    color: #666;
-    font-size: 13px;
-    line-height: 1.6;
+#qualitySuggestion,
+#qualitySummary {
+    overflow-wrap: anywhere;
 }
 
-/* OCR Result */
 
-.ocr-result {
+/* =============================================
+   OCR RESULT SECTION
+============================================= */
+
+#resultSection {
     margin-top: 30px;
-    padding: 25px;
-    background-color: #f8faff;
-    border: 1px solid #dce4f5;
+    padding: 22px;
+    border: 1px solid #dce3ed;
     border-radius: 10px;
-    text-align: left;
+    background: #ffffff;
 }
 
-.ocr-result h3 {
-    color: #263b80;
-    margin-bottom: 15px;
+#resultSection h2 {
+    margin-top: 0;
 }
 
-#extractedText {
+#result {
+    min-height: 80px;
+    padding: 15px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #333333;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    line-height: 1.6;
-    font-family: Arial, sans-serif;
 }
 
-@media (max-width: 600px) {
 
-    section {
-        padding: 25px 18px;
+/* =============================================
+   RESPONSIVE DESIGN
+============================================= */
+
+@media (max-width: 650px) {
+
+    body {
+        padding: 15px 10px;
+    }
+
+    .container {
+        padding: 18px;
+    }
+
+    .camera-container,
+    .upload-container,
+    #qualitySection,
+    #resultSection {
+        padding: 15px;
+    }
+
+    .camera-controls {
+        flex-direction: column;
+    }
+
+    .camera-controls button {
+        width: 100%;
     }
 
     .quality-metrics {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    #uploadCapturedButton,
+    #uploadButton {
+        width: 100%;
     }
 
 }
