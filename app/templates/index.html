@@ -16,7 +16,9 @@
 
         <h1>Helping Eyes</h1>
 
-        <p>Upload an image or use your camera to extract and understand text.</p>
+        <p>
+            Upload an image or use your camera to extract and understand text.
+        </p>
 
 
         <!-- ================================= -->
@@ -27,18 +29,23 @@
 
             <h3>Live Camera</h3>
 
-            <p>Use your camera to capture text directly.</p>
+            <p>
+                Use your camera to capture text directly.
+            </p>
 
             <!-- Live Camera Preview -->
+
             <video id="cameraPreview" autoplay playsinline muted style="display: none;">
             </video>
 
             <!-- Hidden Canvas for Image Capture -->
+
             <canvas id="cameraCanvas" style="display: none;">
             </canvas>
 
 
             <!-- Camera Controls -->
+
             <div class="camera-controls">
 
                 <button id="startCameraButton">
@@ -57,6 +64,7 @@
 
 
             <!-- Camera Status -->
+
             <p id="cameraStatus" aria-live="polite"></p>
 
 
@@ -87,6 +95,9 @@
                 <p id="realtimeStatus" aria-live="polite">
                     Start the camera to enable real-time OCR.
                 </p>
+
+
+                <!-- Live OCR Result -->
 
                 <div class="realtime-result-container">
 
@@ -153,6 +164,7 @@
 
 
             <!-- Quality Measurements -->
+
             <div class="quality-metrics">
 
                 <div class="metric">
@@ -194,6 +206,7 @@
 
 
             <!-- Detected Problems -->
+
             <div class="quality-problems">
 
                 <h3>Detected Problems</h3>
@@ -204,6 +217,7 @@
 
 
             <!-- Suggestions -->
+
             <div class="quality-suggestion">
 
                 <h3>Suggestion</h3>
@@ -214,6 +228,7 @@
 
 
             <!-- Quality Summary -->
+
             <div class="quality-summary">
 
                 <h3>Summary</h3>
@@ -238,6 +253,86 @@
             </div>
 
         </div>
+
+
+        <!-- ================================= -->
+        <!-- PART 5: TEXT-TO-SPEECH SECTION -->
+        <!-- ================================= -->
+
+        <div class="tts-container">
+
+            <h2>Text-to-Speech</h2>
+
+            <p>
+                Listen to the text recognized by Helping Eyes.
+            </p>
+
+
+            <!-- Voice Selection -->
+
+            <div class="tts-setting">
+
+                <label for="voiceSelect">
+                    Select Voice:
+                </label>
+
+                <select id="voiceSelect">
+
+                    <option value="">
+                        Default Voice
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- Speech Speed -->
+
+            <div class="tts-setting">
+
+                <label for="speechRate">
+                    Speech Speed:
+                </label>
+
+                <input type="range" id="speechRate" min="0.5" max="2" step="0.1" value="1">
+
+                <span id="speechRateValue">1x</span>
+
+            </div>
+
+
+            <!-- Speech Controls -->
+
+            <div class="tts-controls">
+
+                <button id="speakButton">
+                    Speak Text
+                </button>
+
+                <button id="pauseButton" disabled>
+                    Pause
+                </button>
+
+                <button id="resumeButton" disabled>
+                    Resume
+                </button>
+
+                <button id="stopSpeechButton" disabled>
+                    Stop
+                </button>
+
+            </div>
+
+
+            <!-- Speech Status -->
+
+            <p id="speechStatus" aria-live="polite">
+                Ready to read recognized text.
+            </p>
+
+        </div>
+
 
     </div>
 

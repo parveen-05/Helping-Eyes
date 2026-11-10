@@ -809,3 +809,501 @@ window.addEventListener("pagehide", () => {
 console.log(
     "Helping Eyes frontend loaded successfully!"
 );
+
+
+// =============================================
+// PART 5: TEXT-TO-SPEECH (TTS)
+// =============================================
+
+// TTS HTML elements
+
+const voiceSelect = document.getElementById("voiceSelect");
+
+const speechRate = document.getElementById("speechRate");
+
+const speechRateValue = document.getElementById("speechRateValue");
+
+const speakButton = document.getElementById("speakButton");
+
+const pauseButton = document.getElementById("pauseButton");
+
+const resumeButton = document.getElementById("resumeButton");
+
+const stopSpeechButton = document.getElementById("stopSpeechButton");
+
+const speechStatus = document.getElementById("speechStatus");
+
+
+// Browser Speech Synthesis API
+
+const speechEngine = window.speechSynthesis;
+
+// Current speech request
+
+let currentUtterance = null;
+
+
+// Store the latest OCR results from both sources
+
+const recognizedTexts = {
+    upload: {
+        text: "",
+        updatedAt: 0
+    },
+
+    realtime: {
+        text: "",
+        updatedAt: 0
+    }
+};
+
+
+// =============================================
+// CHECK BROWSER TTS SUPPORT
+// =============================================
+
+if (!speechEngine) {
+
+    speechStatus.textContent =
+        "Text-to-Speech is not supported by this browser.";
+
+    speakButton.disabled = true;
+
+}
+
+
+// =============================================
+// UPDATE RECOGNIZED TEXT
+// =============================================
+
+function updateRecognizedText(source, element) {
+
+    const text = element.textContent.trim();
+
+    recognizedTexts[source] = {
+        text: text,
+        updatedAt: Date.now()
+    };
+
+}
+
+
+// =============================================
+// MONITOR OCR RESULT CHANGES
+// =============================================
+
+// Observe image upload OCR results
+
+const uploadTextObserver = new MutationObserver(() => {
+
+    updateRecognizedText("upload", extractedText);
+
+});
+
+uploadTextObserver.observe(extractedText, {
+    childList: true,
+    characterData: true,
+    subtree: true
+});
+
+
+// Observe real-time OCR results
+
+const realtimeTextObserver = new MutationObserver(() => {
+
+    updateRecognizedText("realtime", realtimeResult);
+
+});
+
+realtimeTextObserver.observe(realtimeResult, {
+    childList: true,
+    characterData: true,
+    subtree: true
+});
+
+
+// =============================================
+// GET LATEST VALID OCR TEXT
+// =============================================
+
+function getLatestRecognizedText() {
+
+    const latestResults = [
+        recognizedTexts.upload,
+        recognizedTexts.realtime
+    ].sort((a, b) => b.updatedAt - a.updatedAt);
+
+    for (const result of latestResults) {
+
+        const text = result.text.trim();
+
+        if (!text) {
+            continue;
+        }
+
+        const invalidMessages = [
+            "Your extracted text will appear here.",
+            "Recognized text will appear here.",
+            "No text detected in the image.",
+            "No text detected. Adjust the camera position."
+        ];
+
+        if (
+            invalidMessages.includes(text)
+        ) {
+            continue;
+        }
+
+        return text;
+
+    }
+
+    return "";
+
+}
+
+
+// =============================================
+// LOAD AVAILABLE SPEECH VOICES
+// =============================================
+
+function loadSpeechVoices() {
+
+    if (!speechEngine) {
+        return;
+    }
+
+    const voices = speechEngine.getVoices();
+
+    const selectedVoice = voiceSelect.value;
+
+    voiceSelect.replaceChildren();
+
+    // Default voice option
+
+    const defaultOption = document.createElement("option");
+
+    defaultOption.value = "";
+
+    defaultOption.textContent = "Default Voice";
+
+    voiceSelect.appendChild(defaultOption);
+
+
+    // Add available browser voices
+
+    voices.forEach((voice, index) => {
+
+        const option = document.createElement("option");
+
+        option.value = String(index);
+
+        option.textContent =
+            `${voice.name} (${voice.lang})`;
+
+        voiceSelect.appendChild(option);
+
+    });
+
+
+    // Restore selected voice if available
+
+    if (
+        selectedVoice !== "" &&
+        voices[Number(selectedVoice)]
+    ) {
+
+        voiceSelect.value = selectedVoice;
+
+    }
+
+    console.log(
+        "Available speech voices:",
+        voices.length
+    );
+
+}
+
+
+// Load voices initially
+
+if (speechEngine) {
+
+    loadSpeechVoices();
+
+    // Some browsers load voices asynchronously
+
+    speechEngine.addEventListener(
+        "voiceschanged",
+        loadSpeechVoices
+    );
+
+}
+
+
+// =============================================
+// SPEECH SPEED CONTROL
+// =============================================
+
+speechRate.addEventListener("input", () => {
+
+    speechRateValue.textContent =
+        `${speechRate.value}x`;
+
+});
+
+
+// =============================================
+// UPDATE SPEECH CONTROL BUTTONS
+// =============================================
+
+function updateSpeechControls(isSpeaking, isPaused) {
+
+    speakButton.disabled = isSpeaking || isPaused;
+
+    pauseButton.disabled = !isSpeaking;
+
+    resumeButton.disabled = !isPaused;
+
+    stopSpeechButton.disabled =
+        !isSpeaking && !isPaused;
+
+}
+
+
+// =============================================
+// SPEAK RECOGNIZED TEXT
+// =============================================
+
+function speakRecognizedText() {
+
+    if (!speechEngine) {
+
+        speechStatus.textContent =
+            "Text-to-Speech is unavailable.";
+
+        return;
+
+    }
+
+    // Get the latest OCR result
+
+    const text = getLatestRecognizedText();
+
+    if (!text) {
+
+        speechStatus.textContent =
+            "No recognized text available. Upload an image or start Real-Time OCR first.";
+
+        return;
+
+    }
+
+
+    // Stop any previous speech
+
+    speechEngine.cancel();
+
+    currentUtterance = null;
+
+    updateSpeechControls(false, false);
+
+
+    // Create a new speech request
+
+    const utterance =
+        new SpeechSynthesisUtterance(text);
+
+
+    // Apply selected speech speed
+
+    utterance.rate = Number(speechRate.value);
+
+
+    // Apply selected voice
+
+    const voices = speechEngine.getVoices();
+
+    const selectedVoice = voiceSelect.value;
+
+    if (
+        selectedVoice !== "" &&
+        voices[Number(selectedVoice)]
+    ) {
+
+        utterance.voice =
+            voices[Number(selectedVoice)];
+
+    }
+
+
+    // Speech start event
+
+    utterance.onstart = () => {
+
+        speechStatus.textContent =
+            "Speaking recognized text...";
+
+        updateSpeechControls(true, false);
+
+    };
+
+
+    // Speech completion event
+
+    utterance.onend = () => {
+
+        speechStatus.textContent =
+            "Speech completed successfully.";
+
+        currentUtterance = null;
+
+        updateSpeechControls(false, false);
+
+    };
+
+
+    // Speech error event
+
+    utterance.onerror = (event) => {
+
+        if (event.error === "canceled" ||
+            event.error === "interrupted") {
+
+            return;
+
+        }
+
+        speechStatus.textContent =
+            "Speech error: " + event.error;
+
+        currentUtterance = null;
+
+        updateSpeechControls(false, false);
+
+        console.error(
+            "Text-to-Speech error:",
+            event.error
+        );
+
+    };
+
+
+    // Store current speech request
+
+    currentUtterance = utterance;
+
+
+    // Start speaking
+
+    speechEngine.speak(utterance);
+
+    speechStatus.textContent =
+        "Preparing speech...";
+
+    console.log(
+        "Speaking OCR text:",
+        text
+    );
+
+}
+
+
+// =============================================
+// SPEAK BUTTON
+// =============================================
+
+speakButton.addEventListener("click", () => {
+
+    speakRecognizedText();
+
+});
+
+
+// =============================================
+// PAUSE SPEECH
+// =============================================
+
+pauseButton.addEventListener("click", () => {
+
+    if (
+        speechEngine &&
+        speechEngine.speaking &&
+        !speechEngine.paused
+    ) {
+
+        speechEngine.pause();
+
+        speechStatus.textContent =
+            "Speech paused.";
+
+        updateSpeechControls(false, true);
+
+        console.log("Speech paused.");
+
+    }
+
+});
+
+
+// =============================================
+// RESUME SPEECH
+// =============================================
+
+resumeButton.addEventListener("click", () => {
+
+    if (
+        speechEngine &&
+        speechEngine.paused
+    ) {
+
+        speechEngine.resume();
+
+        speechStatus.textContent =
+            "Resuming speech...";
+
+        updateSpeechControls(true, false);
+
+        console.log("Speech resumed.");
+
+    }
+
+});
+
+
+// =============================================
+// STOP SPEECH
+// =============================================
+
+stopSpeechButton.addEventListener("click", () => {
+
+    if (speechEngine) {
+
+        speechEngine.cancel();
+
+        currentUtterance = null;
+
+        updateSpeechControls(false, false);
+
+        speechStatus.textContent =
+            "Speech stopped.";
+
+        console.log("Speech stopped.");
+
+    }
+
+});
+
+
+// =============================================
+// PART 5: TTS INITIALIZATION
+// =============================================
+
+updateSpeechControls(false, false);
+
+speechRateValue.textContent =
+    `${speechRate.value}x`;
+
+console.log(
+    "Helping Eyes Text-to-Speech module initialized!"
+);

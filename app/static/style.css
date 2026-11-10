@@ -144,6 +144,48 @@ button:disabled {
 
 
 /* =============================================
+   REAL-TIME OCR
+============================================= */
+
+.realtime-ocr-container {
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px solid #dce3ed;
+}
+
+.realtime-ocr-container h4 {
+    color: #263b60;
+}
+
+.realtime-result-container {
+    margin-top: 20px;
+    padding: 18px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.realtime-result-container h4 {
+    margin-top: 0;
+}
+
+#realtimeResult {
+    min-height: 60px;
+    padding: 12px;
+    border-radius: 6px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+#realtimeConfidence {
+    font-weight: 600;
+    color: #1e3a8a;
+}
+
+
+/* =============================================
    CAPTURED IMAGE PREVIEW
 ============================================= */
 
@@ -345,6 +387,127 @@ input[type="file"] {
 
 
 /* =============================================
+   PART 5: TEXT-TO-SPEECH
+============================================= */
+
+.tts-container {
+    margin-top: 30px;
+    padding: 22px;
+    border: 1px solid #dce3ed;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.tts-container h2 {
+    margin-top: 0;
+    color: #1e3a8a;
+}
+
+.tts-container>p {
+    margin-bottom: 20px;
+}
+
+
+/* TTS Settings */
+
+.tts-setting {
+    margin: 18px 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.tts-setting label {
+    min-width: 120px;
+    font-weight: 600;
+    color: #334155;
+}
+
+
+/* Voice Selection */
+
+#voiceSelect {
+    flex: 1;
+    min-width: 180px;
+    padding: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #ffffff;
+    font-size: 14px;
+    color: #333333;
+}
+
+
+/* Speech Speed */
+
+#speechRate {
+    flex: 1;
+    min-width: 120px;
+    cursor: pointer;
+    accent-color: #2563eb;
+}
+
+#speechRateValue {
+    min-width: 35px;
+    font-weight: 600;
+    color: #1e3a8a;
+}
+
+
+/* Speech Controls */
+
+.tts-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+#speakButton {
+    background: #16a34a;
+}
+
+#speakButton:hover:not(:disabled) {
+    background: #15803d;
+}
+
+#pauseButton {
+    background: #d97706;
+}
+
+#pauseButton:hover:not(:disabled) {
+    background: #b45309;
+}
+
+#resumeButton {
+    background: #2563eb;
+}
+
+#stopSpeechButton {
+    background: #dc2626;
+}
+
+#stopSpeechButton:hover:not(:disabled) {
+    background: #b91c1c;
+}
+
+
+/* Speech Status */
+
+#speechStatus {
+    margin-top: 20px;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #dce3ed;
+    background: #ffffff;
+    color: #334155;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+
+/* =============================================
    RESPONSIVE DESIGN
 ============================================= */
 
@@ -361,15 +524,18 @@ input[type="file"] {
     .camera-container,
     .upload-container,
     #qualitySection,
-    #resultSection {
+    #resultSection,
+    .tts-container {
         padding: 15px;
     }
 
-    .camera-controls {
+    .camera-controls,
+    .tts-controls {
         flex-direction: column;
     }
 
-    .camera-controls button {
+    .camera-controls button,
+    .tts-controls button {
         width: 100%;
     }
 
@@ -379,6 +545,19 @@ input[type="file"] {
 
     #uploadCapturedButton,
     #uploadButton {
+        width: 100%;
+    }
+
+    .tts-setting {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .tts-setting label {
+        min-width: auto;
+    }
+
+    #voiceSelect {
         width: 100%;
     }
 
