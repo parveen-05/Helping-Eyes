@@ -61,6 +61,49 @@
 
 
             <!-- ================================= -->
+            <!-- PART 4: REAL-TIME OCR CONTROLS -->
+            <!-- ================================= -->
+
+            <div class="realtime-ocr-container">
+
+                <h4>Real-Time OCR</h4>
+
+                <p>
+                    Automatically recognize text from the live camera.
+                </p>
+
+                <div class="camera-controls">
+
+                    <button id="startRealtimeButton" disabled>
+                        Start Real-Time OCR
+                    </button>
+
+                    <button id="stopRealtimeButton" disabled>
+                        Stop Real-Time OCR
+                    </button>
+
+                </div>
+
+                <p id="realtimeStatus" aria-live="polite">
+                    Start the camera to enable real-time OCR.
+                </p>
+
+                <div class="realtime-result-container">
+
+                    <h4>Live Recognized Text</h4>
+
+                    <div id="realtimeResult" aria-live="polite">
+                        Recognized text will appear here.
+                    </div>
+
+                    <p id="realtimeConfidence"></p>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================================= -->
             <!-- CAPTURED IMAGE PREVIEW -->
             <!-- ================================= -->
 

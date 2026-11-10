@@ -53,12 +53,41 @@ const uploadCapturedButton =
 
 
 // =============================================
-// CAMERA VARIABLES
+// PART 4: REAL-TIME OCR ELEMENTS
+// =============================================
+
+const startRealtimeButton =
+    document.getElementById("startRealtimeButton");
+
+const stopRealtimeButton =
+    document.getElementById("stopRealtimeButton");
+
+const realtimeStatus =
+    document.getElementById("realtimeStatus");
+
+const realtimeResult =
+    document.getElementById("realtimeResult");
+
+const realtimeConfidence =
+    document.getElementById("realtimeConfidence");
+
+
+// =============================================
+// CAMERA AND REAL-TIME VARIABLES
 // =============================================
 
 let cameraStream = null;
+
 let capturedFile = null;
 let capturedImageURL = null;
+
+// Real-time OCR state
+let realtimeActive = false;
+let realtimeTimer = null;
+let processingFrame = false;
+
+// Capture a frame every 1.5 seconds
+const REALTIME_INTERVAL = 1500;
 
 
 // =============================================
@@ -69,7 +98,6 @@ function displayQualityReport(quality) {
 
     qualityResult.style.display = "block";
 
-    // Display image quality status
     if (quality.acceptable) {
 
         qualityStatus.textContent =
@@ -140,20 +168,22 @@ function displayQualityReport(quality) {
 
 // =============================================
 // COMMON IMAGE UPLOAD FUNCTION
-// Used by both file upload and camera capture
+// Used by normal upload and camera capture
 // =============================================
 
 async function uploadImage(file, source) {
 
     if (!file) {
+
         uploadStatus.textContent =
             "Please select or capture an image first.";
+
         return;
+
     }
 
     const formData = new FormData();
 
-    // Backend expects the field name "file"
     formData.append("file", file);
 
     uploadStatus.textContent =
@@ -169,7 +199,6 @@ async function uploadImage(file, source) {
 
     try {
 
-        // Send image to existing FastAPI endpoint
         const response = await fetch("/api/upload", {
             method: "POST",
             body: formData
@@ -185,7 +214,6 @@ async function uploadImage(file, source) {
 
         }
 
-        // Display successful upload
         uploadStatus.textContent =
             `${result.message} File: ${result.filename}`;
 
@@ -196,7 +224,7 @@ async function uploadImage(file, source) {
 
         }
 
-        // Display extracted OCR text
+        // Display OCR text
         extractedText.textContent =
             result.extracted_text ||
             "No text detected in the image.";
@@ -278,7 +306,6 @@ startCameraButton.addEventListener("click", async () => {
 
         startCameraButton.disabled = true;
 
-        // Check browser camera support
         if (
             !navigator.mediaDevices ||
             !navigator.mediaDevices.getUserMedia
@@ -290,7 +317,6 @@ startCameraButton.addEventListener("click", async () => {
 
         }
 
-        // Request camera access
         cameraStream =
             await navigator.mediaDevices.getUserMedia({
 
@@ -304,7 +330,6 @@ startCameraButton.addEventListener("click", async () => {
 
             });
 
-        // Connect camera stream to video element
         cameraPreview.srcObject = cameraStream;
 
         cameraPreview.style.display = "block";
@@ -315,6 +340,12 @@ startCameraButton.addEventListener("click", async () => {
         startCameraButton.disabled = true;
         captureButton.disabled = false;
         stopCameraButton.disabled = false;
+
+        // Enable real-time OCR
+        startRealtimeButton.disabled = false;
+
+        realtimeStatus.textContent =
+            "Camera ready. Start Real-Time OCR when ready.";
 
         cameraStatus.textContent =
             "Camera started. Position the text clearly.";
@@ -336,7 +367,224 @@ startCameraButton.addEventListener("click", async () => {
 
 
 // =============================================
-// CAPTURE IMAGE
+// PART 4: CAPTURE AND PROCESS CAMERA FRAME
+// =============================================
+
+async function processRealtimeFrame() {
+
+    // Prevent processing if OCR is stopped
+    if (!realtimeActive || !cameraStream) {
+        return;
+    }
+
+    // Prevent overlapping frame requests
+    if (processingFrame) {
+        return;
+    }
+
+    // Check camera readiness
+    if (
+        cameraPreview.readyState < 2 ||
+        !cameraPreview.videoWidth ||
+        !cameraPreview.videoHeight
+    ) {
+        return;
+    }
+
+    processingFrame = true;
+
+    try {
+
+        const width = cameraPreview.videoWidth;
+        const height = cameraPreview.videoHeight;
+
+        // Set canvas dimensions
+        cameraCanvas.width = width;
+        cameraCanvas.height = height;
+
+        const context = cameraCanvas.getContext("2d");
+
+        if (!context) {
+
+            throw new Error(
+                "Unable to access camera canvas."
+            );
+
+        }
+
+        // Draw current camera frame
+        context.drawImage(
+            cameraPreview,
+            0,
+            0,
+            width,
+            height
+        );
+
+        realtimeStatus.textContent =
+            "Capturing frame and recognizing text...";
+
+        // Convert frame into JPEG
+        const blob = await new Promise((resolve, reject) => {
+
+            cameraCanvas.toBlob((imageBlob) => {
+
+                if (!imageBlob) {
+
+                    reject(
+                        new Error("Unable to capture camera frame.")
+                    );
+
+                    return;
+
+                }
+
+                resolve(imageBlob);
+
+            }, "image/jpeg", 0.8);
+
+        });
+
+        // Create form data
+        const formData = new FormData();
+
+        formData.append(
+            "file",
+            blob,
+            "realtime-frame.jpg"
+        );
+
+        // Send frame to FastAPI real-time OCR endpoint
+        const response = await fetch("/api/ocr/frame", {
+
+            method: "POST",
+
+            body: formData
+
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                result.detail || "Real-time OCR failed."
+            );
+
+        }
+
+        // Display recognized text
+        realtimeResult.textContent =
+            result.extracted_text ||
+            "No text detected. Adjust the camera position.";
+
+        // Display confidence
+        realtimeConfidence.textContent =
+            `Average OCR confidence: ${(result.average_confidence * 100).toFixed(1)
+            }%`;
+
+        realtimeStatus.textContent =
+            `Live OCR running. ${result.line_count} text lines detected.`;
+
+        console.log("Real-time OCR result:", result);
+
+    } catch (error) {
+
+        realtimeStatus.textContent =
+            "OCR error: " + error.message;
+
+        console.error("Real-time OCR error:", error);
+
+    } finally {
+
+        processingFrame = false;
+
+    }
+
+}
+
+
+// =============================================
+// START REAL-TIME OCR
+// =============================================
+
+startRealtimeButton.addEventListener("click", () => {
+
+    if (!cameraStream) {
+
+        realtimeStatus.textContent =
+            "Please start the camera first.";
+
+        return;
+
+    }
+
+    if (realtimeActive) {
+        return;
+    }
+
+    realtimeActive = true;
+
+    startRealtimeButton.disabled = true;
+    stopRealtimeButton.disabled = false;
+
+    realtimeStatus.textContent =
+        "Starting real-time OCR...";
+
+    // Process the first frame immediately
+    processRealtimeFrame();
+
+    // Continue processing frames at fixed intervals
+    realtimeTimer = setInterval(
+        processRealtimeFrame,
+        REALTIME_INTERVAL
+    );
+
+    console.log("Real-time OCR started.");
+
+});
+
+
+// =============================================
+// STOP REAL-TIME OCR
+// =============================================
+
+function stopRealtimeOCR() {
+
+    realtimeActive = false;
+
+    if (realtimeTimer !== null) {
+
+        clearInterval(realtimeTimer);
+
+        realtimeTimer = null;
+
+    }
+
+    processingFrame = false;
+
+    startRealtimeButton.disabled =
+        !cameraStream;
+
+    stopRealtimeButton.disabled = true;
+
+    realtimeStatus.textContent =
+        "Real-time OCR stopped.";
+
+    console.log("Real-time OCR stopped.");
+
+}
+
+
+stopRealtimeButton.addEventListener("click", () => {
+
+    stopRealtimeOCR();
+
+});
+
+
+// =============================================
+// CAPTURE IMAGE MANUALLY
 // =============================================
 
 captureButton.addEventListener("click", () => {
@@ -350,7 +598,6 @@ captureButton.addEventListener("click", () => {
 
     }
 
-    // Check camera readiness
     if (
         cameraPreview.readyState < 2 ||
         !cameraPreview.videoWidth ||
@@ -367,7 +614,6 @@ captureButton.addEventListener("click", () => {
     const width = cameraPreview.videoWidth;
     const height = cameraPreview.videoHeight;
 
-    // Set canvas dimensions
     cameraCanvas.width = width;
     cameraCanvas.height = height;
 
@@ -382,7 +628,6 @@ captureButton.addEventListener("click", () => {
 
     }
 
-    // Draw current camera frame on canvas
     context.drawImage(
         cameraPreview,
         0,
@@ -394,7 +639,6 @@ captureButton.addEventListener("click", () => {
     cameraStatus.textContent =
         "Capturing image...";
 
-    // Convert canvas to JPEG
     cameraCanvas.toBlob((blob) => {
 
         if (!blob || blob.size === 0) {
@@ -406,7 +650,6 @@ captureButton.addEventListener("click", () => {
 
         }
 
-        // Create a File from the captured image
         capturedFile = new File(
             [blob],
             "camera-capture.jpg",
@@ -415,23 +658,19 @@ captureButton.addEventListener("click", () => {
             }
         );
 
-        // Remove previous preview URL
         if (capturedImageURL) {
 
             URL.revokeObjectURL(capturedImageURL);
 
         }
 
-        // Create preview URL
         capturedImageURL =
             URL.createObjectURL(blob);
 
-        // Display captured image
         capturedPreview.src = capturedImageURL;
 
         capturedPreview.style.display = "block";
 
-        // Enable upload button
         uploadCapturedButton.disabled = false;
 
         cameraStatus.textContent =
@@ -482,9 +721,11 @@ stopCameraButton.addEventListener("click", () => {
 
 function stopCamera() {
 
+    // Stop real-time OCR first
+    stopRealtimeOCR();
+
     if (cameraStream) {
 
-        // Stop all camera tracks
         cameraStream.getTracks().forEach((track) => {
 
             track.stop();
@@ -495,7 +736,6 @@ function stopCamera() {
 
     }
 
-    // Disconnect camera preview
     cameraPreview.srcObject = null;
 
     cameraPreview.style.display = "none";
@@ -505,11 +745,15 @@ function stopCamera() {
     captureButton.disabled = true;
     stopCameraButton.disabled = true;
 
-    // Do not clear capturedFile here.
-    // The user may still want to upload it.
+    startRealtimeButton.disabled = true;
+    stopRealtimeButton.disabled = true;
 
+    // Keep capturedFile for later upload
     cameraStatus.textContent =
         "Camera stopped.";
+
+    realtimeStatus.textContent =
+        "Start the camera to enable real-time OCR.";
 
     console.log("Camera stopped.");
 
@@ -522,6 +766,18 @@ function stopCamera() {
 
 window.addEventListener("pagehide", () => {
 
+    // Stop real-time OCR
+    realtimeActive = false;
+
+    if (realtimeTimer !== null) {
+
+        clearInterval(realtimeTimer);
+
+        realtimeTimer = null;
+
+    }
+
+    // Stop camera tracks
     if (cameraStream) {
 
         cameraStream.getTracks().forEach((track) => {
@@ -534,6 +790,7 @@ window.addEventListener("pagehide", () => {
 
     }
 
+    // Release preview URL
     if (capturedImageURL) {
 
         URL.revokeObjectURL(capturedImageURL);

@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.vision import assess_quality, read_text_enhanced
+from app.vision import assess_quality, read_text_enhanced, recognize_text
 
 
 app = FastAPI(
@@ -128,3 +128,77 @@ async def upload_image(file: UploadFile = File(...)):
         "extracted_text": extracted_text,
         "quality": quality_data
     }
+# ============================================================
+# PART 4: REAL-TIME OCR
+# ============================================================
+
+@app.post("/api/ocr/frame")
+async def process_camera_frame(file: UploadFile = File(...)):
+
+    # 1. Validate uploaded frame type
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Please send a valid image frame."
+        )
+
+    # 2. Read frame data into memory
+    image_data = await file.read()
+
+    # 3. Validate frame size (maximum 5 MB)
+    if not image_data:
+        raise HTTPException(
+            status_code=400,
+            detail="Received an empty camera frame."
+        )
+
+    if len(image_data) > 5 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail="Camera frame is too large."
+        )
+
+    # 4. Decode frame using OpenCV
+    image_array = np.frombuffer(
+        image_data,
+        dtype=np.uint8
+    )
+
+    image = cv2.imdecode(
+        image_array,
+        cv2.IMREAD_COLOR
+    )
+
+    if image is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to decode camera frame."
+        )
+
+    # 5. Perform fast Apple Vision OCR
+    lines = recognize_text(
+        image,
+        fast=True
+    )
+
+    # 6. Combine recognized text
+    extracted_text = "\n".join(
+        line.text for line in lines
+    )
+
+    # 7. Calculate average OCR confidence
+    average_confidence = (
+        sum(line.confidence for line in lines) / len(lines)
+        if lines else 0.0
+    )
+
+    # 8. Return OCR results
+    return {
+        "message": "Camera frame processed successfully.",
+        "extracted_text": extracted_text,
+        "line_count": len(lines),
+        "average_confidence": round(
+            average_confidence,
+            3
+        )
+    }    
