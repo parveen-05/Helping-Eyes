@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.vision import recognize_text
+from app.vision import read_text_enhanced
 
 
 app = FastAPI(
@@ -91,12 +91,10 @@ async def upload_image(file: UploadFile = File(...)):
     file_path = UPLOAD_DIR / filename
     file_path.write_bytes(image_data)
 
-    # Extract text using Apple Vision OCR
-    text_lines = recognize_text(image)
+        # Extract text using automatic OCR enhancement
+    extracted_text, best_variant = read_text_enhanced(image)
 
-    extracted_text = "\n".join(
-        line.text for line in text_lines
-    )
+    print(f"Best OCR image variant: {best_variant}")
 
     return {
         "message": "Image uploaded successfully!",
