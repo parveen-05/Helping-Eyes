@@ -22,13 +22,53 @@
             <p>Upload an image to extract and understand its text.</p>
 
             <div class="upload-container">
+
                 <input type="file" id="imageInput" accept="image/*">
 
                 <button id="uploadButton">
                     Upload Image
                 </button>
 
-                <p id="uploadStatus"></p>
+                <p id="uploadStatus" aria-live="polite"></p>
+
+                <!-- Image Quality Report -->
+                <div id="qualityResult" class="quality-result" style="display: none;">
+
+                    <h3>Image Quality Report</h3>
+
+                    <p id="qualityStatus"></p>
+
+                    <div class="quality-metrics">
+                        <div class="metric">
+                            <span>Sharpness</span>
+                            <strong id="sharpnessValue">-</strong>
+                        </div>
+
+                        <div class="metric">
+                            <span>Brightness</span>
+                            <strong id="brightnessValue">-</strong>
+                        </div>
+
+                        <div class="metric">
+                            <span>Contrast</span>
+                            <strong id="contrastValue">-</strong>
+                        </div>
+
+                        <div class="metric">
+                            <span>Glare</span>
+                            <strong id="glareValue">-</strong>
+                        </div>
+                    </div>
+
+                    <h4>Detected Problems</h4>
+                    <ul id="qualityProblems"></ul>
+
+                    <h4>Suggestion</h4>
+                    <p id="qualitySuggestion"></p>
+
+                    <p id="qualitySummary" class="quality-summary"></p>
+
+                </div>
 
                 <!-- OCR Result Section -->
                 <div id="ocrResult" class="ocr-result" style="display: none;">

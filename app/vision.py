@@ -10,6 +10,86 @@ import numpy as np
 Box = Tuple[int, int, int, int]
 
 
+# ============================================================
+# PART 2: IMAGE QUALITY REPORT
+# ============================================================
+
+@dataclass
+class QualityReport:
+    """Stores image quality measurements and detected problems."""
+
+    sharpness: float = 0.0
+    brightness: float = 0.0
+    contrast: float = 0.0
+    clipped_bright: float = 0.0
+    glare_fraction: float = 0.0
+    glare_center: Optional[Tuple[int, int]] = None
+    problems: List[str] = field(default_factory=list)
+
+    def ok(self) -> bool:
+        """Return True when no quality problems are detected."""
+        return len(self.problems) == 0
+
+    def hint(self) -> str:
+        """Generate suggestions to improve image quality."""
+
+        if not self.problems:
+            return "Image quality looks good. Ready for OCR."
+
+        hints = []
+
+        for problem in self.problems:
+
+            if problem == "blurry":
+                hints.append(
+                    "Hold your camera steady and focus on the text."
+                )
+
+            elif problem == "too_dark":
+                hints.append(
+                    "Increase the lighting around the page."
+                )
+
+            elif problem == "too_bright":
+                hints.append(
+                    "Reduce excessive lighting and adjust exposure."
+                )
+
+            elif problem == "low_contrast":
+                hints.append(
+                    "Improve lighting so the text is easier to distinguish."
+                )
+
+            elif problem == "glare":
+                hints.append(
+                    "Change the camera angle to avoid reflections."
+                )
+
+        return " ".join(hints)
+
+    def summary(self) -> str:
+        """Return a readable summary of image quality."""
+
+        detected = (
+            ", ".join(self.problems)
+            if self.problems
+            else "None"
+        )
+
+        return (
+            f"Sharpness: {self.sharpness:.2f}, "
+            f"Brightness: {self.brightness:.2f}, "
+            f"Contrast: {self.contrast:.2f}, "
+            f"Overexposed pixels: {self.clipped_bright:.2%}, "
+            f"Glare: {self.glare_fraction:.2%}, "
+            f"Problems: {detected}"
+        )
+
+
+# ============================================================
+# PART 1: OCR DATA STRUCTURE
+# ============================================================
+
 @dataclass
 class TextLine:
     text: str
@@ -19,6 +99,149 @@ class TextLine:
     quad: Optional[List[Tuple[float, float]]] = None
     word_quads: List[List[Tuple[float, float]]] = field(default_factory=list)
 
+
+# ============================================================
+# PART 2: IMAGE QUALITY ASSESSMENT
+# ============================================================
+
+def assess_quality(image: np.ndarray) -> QualityReport:
+    """
+    Analyse an image for blur, brightness, contrast and glare.
+
+    Returns a QualityReport containing measurements,
+    detected problems and an approximate glare location.
+
+    Thresholds are initial heuristics and may need tuning
+    using real book images.
+    """
+
+    if image is None or image.size == 0:
+        raise ValueError("Input image is empty.")
+
+    if image.ndim == 2:
+        gray = image.copy()
+
+    elif image.ndim == 3 and image.shape[2] == 3:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    elif image.ndim == 3 and image.shape[2] == 4:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGRA2GRAY)
+
+    else:
+        raise ValueError("Unsupported image format.")
+
+    # 1. Sharpness: variance of Laplacian
+    sharpness = float(
+        cv2.Laplacian(gray, cv2.CV_64F).var()
+    )
+
+    # 2. Brightness: average grayscale intensity
+    brightness = float(np.mean(gray))
+
+    # 3. Contrast: standard deviation of grayscale intensity
+    contrast = float(np.std(gray))
+
+    # 4. Overexposure: fraction of pixels close to pure white
+    clipped_bright = float(
+        np.count_nonzero(gray > 245) / gray.size
+    )
+
+    # 5. Glare detection
+    # Look for very bright, nearly white regions.
+    glare_mask = cv2.inRange(
+        gray,
+        250,
+        255
+    )
+
+    # Remove tiny isolated bright pixels.
+    kernel = cv2.getStructuringElement(
+        cv2.MORPH_ELLIPSE,
+        (7, 7)
+    )
+
+    glare_mask = cv2.morphologyEx(
+        glare_mask,
+        cv2.MORPH_OPEN,
+        kernel
+    )
+
+    # Find connected bright regions.
+    count, labels, stats, centroids = (
+        cv2.connectedComponentsWithStats(
+            glare_mask,
+            connectivity=8
+        )
+    )
+
+    total_pixels = gray.size
+
+    minimum_area = max(
+        20,
+        int(total_pixels * 0.0001)
+    )
+
+    glare_pixels = 0
+    glare_center = None
+    weighted_x = 0.0
+    weighted_y = 0.0
+
+    for index in range(1, count):
+
+        area = int(
+            stats[index, cv2.CC_STAT_AREA]
+        )
+
+        if area < minimum_area:
+            continue
+
+        glare_pixels += area
+
+        weighted_x += centroids[index][0] * area
+        weighted_y += centroids[index][1] * area
+
+    glare_fraction = float(
+        glare_pixels / total_pixels
+    )
+
+    if glare_pixels > 0:
+        glare_center = (
+            int(weighted_x / glare_pixels),
+            int(weighted_y / glare_pixels)
+        )
+
+    # 6. Identify quality problems.
+    problems = []
+
+    if sharpness < 60:
+        problems.append("blurry")
+
+    if brightness < 50:
+        problems.append("too_dark")
+
+    if brightness > 205 and clipped_bright > 0.40:
+        problems.append("too_bright")
+
+    if contrast < 25:
+        problems.append("low_contrast")
+
+    if glare_fraction >= 0.01:
+        problems.append("glare")
+
+    return QualityReport(
+        sharpness=sharpness,
+        brightness=brightness,
+        contrast=contrast,
+        clipped_bright=clipped_bright,
+        glare_fraction=glare_fraction,
+        glare_center=glare_center,
+        problems=problems
+    )
+
+
+# ============================================================
+# PART 1: APPLE VISION COORDINATE CONVERSION
+# ============================================================
 
 def _vision_box(rect, w: int, h: int) -> Box:
     """Convert Vision's normalised bounding box to pixel coordinates."""
@@ -47,6 +270,10 @@ def _vision_quad(obs, w: int, h: int):
         )
     ]
 
+
+# ============================================================
+# PART 1: APPLE VISION OCR
+# ============================================================
 
 def recognize_text(
     image: np.ndarray,
@@ -143,6 +370,10 @@ def recognize_text(
     return lines
 
 
+# ============================================================
+# PART 1: TEXT REGION DETECTION
+# ============================================================
+
 def find_text_region(
     image: np.ndarray,
     min_chars: int = 8
@@ -174,6 +405,10 @@ def find_text_region(
 
     return (x1, y1, x2, y2), lines
 
+
+# ============================================================
+# PART 1: IMAGE ENHANCEMENT
+# ============================================================
 
 def enhance_tone(
     image: np.ndarray,
@@ -257,6 +492,11 @@ def binarize(image: np.ndarray) -> np.ndarray:
 
     return cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR)
 
+
+# ============================================================
+# PART 1: AUTOMATIC OCR ENHANCEMENT AND SELECTION
+# ============================================================
+
 def read_text_enhanced(image: np.ndarray):
     """
     Try OCR on original, tone-enhanced and binarized images.
@@ -292,3 +532,4 @@ def read_text_enhanced(image: np.ndarray):
             )
 
     return best_text, best_variant
+

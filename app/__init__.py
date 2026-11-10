@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.vision import read_text_enhanced
+from app.vision import assess_quality, read_text_enhanced
 
 
 app = FastAPI(
@@ -52,24 +52,24 @@ def health_check():
 @app.post("/api/upload")
 async def upload_image(file: UploadFile = File(...)):
 
-    # Check whether the uploaded file is an image
+    # 1. Validate uploaded file type
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(
             status_code=400,
             detail="Please upload a valid image file."
         )
 
-    # Read the uploaded image
+    # 2. Read uploaded image
     image_data = await file.read()
 
-    # Limit image size to 10 MB
+    # 3. Check image size (maximum 10 MB)
     if len(image_data) > 10 * 1024 * 1024:
         raise HTTPException(
             status_code=413,
             detail="Image size must be less than 10 MB."
         )
 
-    # Decode uploaded image into an OpenCV image
+    # 4. Decode image using OpenCV
     image_array = np.frombuffer(image_data, dtype=np.uint8)
     image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
 
@@ -79,7 +79,7 @@ async def upload_image(file: UploadFile = File(...)):
             detail="Unable to read the uploaded image."
         )
 
-    # Generate a unique filename
+    # 5. Generate a unique filename
     extension = Path(file.filename or "").suffix.lower()
 
     if not extension or len(extension) > 10:
@@ -87,18 +87,44 @@ async def upload_image(file: UploadFile = File(...)):
 
     filename = f"{uuid4().hex}{extension}"
 
-    # Save the uploaded image
+    # 6. Save uploaded image
     file_path = UPLOAD_DIR / filename
     file_path.write_bytes(image_data)
 
-        # Extract text using automatic OCR enhancement
+    # 7. Assess image quality
+    quality_report = assess_quality(image)
+
+    print("Image Quality Report:")
+    print(quality_report.summary())
+
+    # 8. Extract text using enhanced OCR
     extracted_text, best_variant = read_text_enhanced(image)
 
     print(f"Best OCR image variant: {best_variant}")
 
+    # 9. Prepare quality information for API response
+    quality_data = {
+        "acceptable": quality_report.ok(),
+        "sharpness": quality_report.sharpness,
+        "brightness": quality_report.brightness,
+        "contrast": quality_report.contrast,
+        "clipped_bright": quality_report.clipped_bright,
+        "glare_fraction": quality_report.glare_fraction,
+        "glare_center": (
+            list(quality_report.glare_center)
+            if quality_report.glare_center is not None
+            else None
+        ),
+        "problems": quality_report.problems,
+        "suggestion": quality_report.hint(),
+        "summary": quality_report.summary()
+    }
+
+    # 10. Return upload, quality and OCR results
     return {
         "message": "Image uploaded successfully!",
         "filename": filename,
         "size": len(image_data),
-        "extracted_text": extracted_text
+        "extracted_text": extracted_text,
+        "quality": quality_data
     }
