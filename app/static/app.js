@@ -12,6 +12,19 @@ const uploadStatus = document.getElementById("status");
 const ocrResult = document.getElementById("resultSection");
 const extractedText = document.getElementById("result");
 
+// =============================================
+// AI QUESTION ANSWERING ELEMENTS
+// =============================================
+
+let currentDocumentId = null;
+
+const askSection = document.getElementById("askSection");
+const askForm = document.getElementById("askForm");
+const questionInput = document.getElementById("questionInput");
+const askButton = document.getElementById("askButton");
+const askStatus = document.getElementById("askStatus");
+const answerResult = document.getElementById("answerResult");
+
 // Image quality elements
 const qualityResult = document.getElementById("qualitySection");
 const qualityStatus = document.getElementById("qualityStatus");
@@ -24,7 +37,6 @@ const glareValue = document.getElementById("glareValue");
 const qualityProblems = document.getElementById("qualityProblems");
 const qualitySuggestion = document.getElementById("qualitySuggestion");
 const qualitySummary = document.getElementById("qualitySummary");
-
 
 // =============================================
 // CAMERA ELEMENTS
@@ -51,7 +63,6 @@ const capturedPreview =
 const uploadCapturedButton =
     document.getElementById("uploadCapturedButton");
 
-
 // =============================================
 // PART 4: REAL-TIME OCR ELEMENTS
 // =============================================
@@ -71,7 +82,6 @@ const realtimeResult =
 const realtimeConfidence =
     document.getElementById("realtimeConfidence");
 
-
 // =============================================
 // CAMERA AND REAL-TIME VARIABLES
 // =============================================
@@ -88,7 +98,6 @@ let processingFrame = false;
 
 // Capture a frame every 1.5 seconds
 const REALTIME_INTERVAL = 1500;
-
 
 // =============================================
 // DISPLAY IMAGE QUALITY REPORT
@@ -127,7 +136,6 @@ function displayQualityReport(quality) {
     glareValue.textContent =
         (Number(quality.glare_fraction) * 100).toFixed(2) + "%";
 
-
     // Display detected problems
     qualityProblems.replaceChildren();
 
@@ -155,7 +163,6 @@ function displayQualityReport(quality) {
 
     }
 
-
     // Display suggestions and summary
     qualitySuggestion.textContent =
         quality.suggestion || "No suggestions available.";
@@ -165,6 +172,25 @@ function displayQualityReport(quality) {
 
 }
 
+// =============================================
+// RESET AI QUESTION ANSWERING
+// =============================================
+
+function resetAISection() {
+
+    currentDocumentId = null;
+
+    askSection.style.display = "none";
+
+    askStatus.textContent = "";
+
+    answerResult.textContent = "";
+
+    questionInput.value = "";
+
+    askButton.disabled = false;
+
+}
 
 // =============================================
 // COMMON IMAGE UPLOAD FUNCTION
@@ -192,6 +218,9 @@ async function uploadImage(file, source) {
     ocrResult.style.display = "none";
     qualityResult.style.display = "none";
 
+    // Reset previous AI session
+    resetAISection();
+
     extractedText.textContent = "";
 
     uploadButton.disabled = true;
@@ -211,6 +240,16 @@ async function uploadImage(file, source) {
             throw new Error(
                 result.detail || "Image upload failed."
             );
+
+        }
+
+        // Store uploaded document ID
+        currentDocumentId = result.document_id;
+
+        // Show AI question section
+        if (currentDocumentId) {
+
+            askSection.style.display = "block";
 
         }
 
@@ -267,7 +306,6 @@ async function uploadImage(file, source) {
 
 }
 
-
 // =============================================
 // NORMAL IMAGE UPLOAD
 // =============================================
@@ -284,6 +322,8 @@ uploadButton.addEventListener("click", async () => {
         ocrResult.style.display = "none";
         qualityResult.style.display = "none";
 
+        resetAISection();
+
         return;
 
     }
@@ -291,7 +331,6 @@ uploadButton.addEventListener("click", async () => {
     await uploadImage(file, "normal");
 
 });
-
 
 // =============================================
 // START CAMERA
@@ -364,7 +403,6 @@ startCameraButton.addEventListener("click", async () => {
     }
 
 });
-
 
 // =============================================
 // PART 4: CAPTURE AND PROCESS CAMERA FRAME
@@ -480,8 +518,7 @@ async function processRealtimeFrame() {
 
         // Display confidence
         realtimeConfidence.textContent =
-            `Average OCR confidence: ${(result.average_confidence * 100).toFixed(1)
-            }%`;
+            `Average OCR confidence: ${(result.average_confidence * 100).toFixed(1)}%`;
 
         realtimeStatus.textContent =
             `Live OCR running. ${result.line_count} text lines detected.`;
@@ -502,7 +539,6 @@ async function processRealtimeFrame() {
     }
 
 }
-
 
 // =============================================
 // START REAL-TIME OCR
@@ -544,7 +580,6 @@ startRealtimeButton.addEventListener("click", () => {
 
 });
 
-
 // =============================================
 // STOP REAL-TIME OCR
 // =============================================
@@ -575,13 +610,11 @@ function stopRealtimeOCR() {
 
 }
 
-
 stopRealtimeButton.addEventListener("click", () => {
 
     stopRealtimeOCR();
 
 });
-
 
 // =============================================
 // CAPTURE IMAGE MANUALLY
@@ -687,7 +720,6 @@ captureButton.addEventListener("click", () => {
 
 });
 
-
 // =============================================
 // UPLOAD CAPTURED IMAGE
 // =============================================
@@ -707,7 +739,6 @@ uploadCapturedButton.addEventListener("click", async () => {
 
 });
 
-
 // =============================================
 // STOP CAMERA
 // =============================================
@@ -717,7 +748,6 @@ stopCameraButton.addEventListener("click", () => {
     stopCamera();
 
 });
-
 
 function stopCamera() {
 
@@ -758,7 +788,6 @@ function stopCamera() {
     console.log("Camera stopped.");
 
 }
-
 
 // =============================================
 // CLEANUP WHEN PAGE IS CLOSED
@@ -801,7 +830,6 @@ window.addEventListener("pagehide", () => {
 
 });
 
-
 // =============================================
 // INITIALIZATION
 // =============================================
@@ -809,7 +837,6 @@ window.addEventListener("pagehide", () => {
 console.log(
     "Helping Eyes frontend loaded successfully!"
 );
-
 
 // =============================================
 // PART 5: TEXT-TO-SPEECH (TTS)
@@ -833,7 +860,6 @@ const stopSpeechButton = document.getElementById("stopSpeechButton");
 
 const speechStatus = document.getElementById("speechStatus");
 
-
 // Browser Speech Synthesis API
 
 const speechEngine = window.speechSynthesis;
@@ -841,7 +867,6 @@ const speechEngine = window.speechSynthesis;
 // Current speech request
 
 let currentUtterance = null;
-
 
 // Store the latest OCR results from both sources
 
@@ -857,7 +882,6 @@ const recognizedTexts = {
     }
 };
 
-
 // =============================================
 // CHECK BROWSER TTS SUPPORT
 // =============================================
@@ -870,7 +894,6 @@ if (!speechEngine) {
     speakButton.disabled = true;
 
 }
-
 
 // =============================================
 // UPDATE RECOGNIZED TEXT
@@ -886,7 +909,6 @@ function updateRecognizedText(source, element) {
     };
 
 }
-
 
 // =============================================
 // MONITOR OCR RESULT CHANGES
@@ -906,7 +928,6 @@ uploadTextObserver.observe(extractedText, {
     subtree: true
 });
 
-
 // Observe real-time OCR results
 
 const realtimeTextObserver = new MutationObserver(() => {
@@ -920,7 +941,6 @@ realtimeTextObserver.observe(realtimeResult, {
     characterData: true,
     subtree: true
 });
-
 
 // =============================================
 // GET LATEST VALID OCR TEXT
@@ -962,7 +982,6 @@ function getLatestRecognizedText() {
 
 }
 
-
 // =============================================
 // LOAD AVAILABLE SPEECH VOICES
 // =============================================
@@ -989,7 +1008,6 @@ function loadSpeechVoices() {
 
     voiceSelect.appendChild(defaultOption);
 
-
     // Add available browser voices
 
     voices.forEach((voice, index) => {
@@ -1004,7 +1022,6 @@ function loadSpeechVoices() {
         voiceSelect.appendChild(option);
 
     });
-
 
     // Restore selected voice if available
 
@@ -1024,7 +1041,6 @@ function loadSpeechVoices() {
 
 }
 
-
 // Load voices initially
 
 if (speechEngine) {
@@ -1040,7 +1056,6 @@ if (speechEngine) {
 
 }
 
-
 // =============================================
 // SPEECH SPEED CONTROL
 // =============================================
@@ -1051,7 +1066,6 @@ speechRate.addEventListener("input", () => {
         `${speechRate.value}x`;
 
 });
-
 
 // =============================================
 // UPDATE SPEECH CONTROL BUTTONS
@@ -1069,7 +1083,6 @@ function updateSpeechControls(isSpeaking, isPaused) {
         !isSpeaking && !isPaused;
 
 }
-
 
 // =============================================
 // SPEAK RECOGNIZED TEXT
@@ -1099,7 +1112,6 @@ function speakRecognizedText() {
 
     }
 
-
     // Stop any previous speech
 
     speechEngine.cancel();
@@ -1108,17 +1120,14 @@ function speakRecognizedText() {
 
     updateSpeechControls(false, false);
 
-
     // Create a new speech request
 
     const utterance =
         new SpeechSynthesisUtterance(text);
 
-
     // Apply selected speech speed
 
     utterance.rate = Number(speechRate.value);
-
 
     // Apply selected voice
 
@@ -1136,7 +1145,6 @@ function speakRecognizedText() {
 
     }
 
-
     // Speech start event
 
     utterance.onstart = () => {
@@ -1147,7 +1155,6 @@ function speakRecognizedText() {
         updateSpeechControls(true, false);
 
     };
-
 
     // Speech completion event
 
@@ -1161,7 +1168,6 @@ function speakRecognizedText() {
         updateSpeechControls(false, false);
 
     };
-
 
     // Speech error event
 
@@ -1188,11 +1194,9 @@ function speakRecognizedText() {
 
     };
 
-
     // Store current speech request
 
     currentUtterance = utterance;
-
 
     // Start speaking
 
@@ -1208,7 +1212,6 @@ function speakRecognizedText() {
 
 }
 
-
 // =============================================
 // SPEAK BUTTON
 // =============================================
@@ -1218,7 +1221,6 @@ speakButton.addEventListener("click", () => {
     speakRecognizedText();
 
 });
-
 
 // =============================================
 // PAUSE SPEECH
@@ -1245,7 +1247,6 @@ pauseButton.addEventListener("click", () => {
 
 });
 
-
 // =============================================
 // RESUME SPEECH
 // =============================================
@@ -1270,7 +1271,6 @@ resumeButton.addEventListener("click", () => {
 
 });
 
-
 // =============================================
 // STOP SPEECH
 // =============================================
@@ -1294,7 +1294,6 @@ stopSpeechButton.addEventListener("click", () => {
 
 });
 
-
 // =============================================
 // PART 5: TTS INITIALIZATION
 // =============================================
@@ -1306,4 +1305,93 @@ speechRateValue.textContent =
 
 console.log(
     "Helping Eyes Text-to-Speech module initialized!"
+);
+
+// =============================================
+// PART 6: AI QUESTION ANSWERING
+// =============================================
+
+askForm.addEventListener("submit", async (event) => {
+
+    event.preventDefault();
+
+    const question = questionInput.value.trim();
+
+    if (!currentDocumentId) {
+
+        askStatus.textContent =
+            "Please upload an image first.";
+
+        return;
+
+    }
+
+    if (!question) {
+
+        askStatus.textContent =
+            "Please enter a question.";
+
+        return;
+
+    }
+
+    askButton.disabled = true;
+
+    askStatus.textContent =
+        "Thinking... Please wait while Helping Eyes finds the answer.";
+
+    answerResult.textContent = "";
+
+    try {
+
+        const response = await fetch("/api/ask", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                document_id: currentDocumentId,
+                question: question
+            })
+
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                result.detail || "Unable to generate an answer."
+            );
+
+        }
+
+        answerResult.textContent =
+            result.answer || "No answer was returned.";
+
+        askStatus.textContent =
+            "Answer generated successfully!";
+
+        console.log("AI question response:", result);
+
+    } catch (error) {
+
+        askStatus.textContent =
+            error.message;
+
+        console.error("AI question error:", error);
+
+    } finally {
+
+        askButton.disabled = false;
+
+    }
+
+});
+
+console.log(
+    "Helping Eyes AI Question Answering module initialized!"
 );

@@ -33,18 +33,11 @@
                 Use your camera to capture text directly.
             </p>
 
-            <!-- Live Camera Preview -->
-
             <video id="cameraPreview" autoplay playsinline muted style="display: none;">
             </video>
 
-            <!-- Hidden Canvas for Image Capture -->
-
             <canvas id="cameraCanvas" style="display: none;">
             </canvas>
-
-
-            <!-- Camera Controls -->
 
             <div class="camera-controls">
 
@@ -61,9 +54,6 @@
                 </button>
 
             </div>
-
-
-            <!-- Camera Status -->
 
             <p id="cameraStatus" aria-live="polite"></p>
 
@@ -95,9 +85,6 @@
                 <p id="realtimeStatus" aria-live="polite">
                     Start the camera to enable real-time OCR.
                 </p>
-
-
-                <!-- Live OCR Result -->
 
                 <div class="realtime-result-container">
 
@@ -162,50 +149,29 @@
 
             <p id="qualityStatus"></p>
 
-
-            <!-- Quality Measurements -->
-
             <div class="quality-metrics">
 
                 <div class="metric">
-
                     <h4>Sharpness</h4>
-
                     <p id="sharpnessValue">-</p>
-
                 </div>
 
-
                 <div class="metric">
-
                     <h4>Brightness</h4>
-
                     <p id="brightnessValue">-</p>
-
                 </div>
 
-
                 <div class="metric">
-
                     <h4>Contrast</h4>
-
                     <p id="contrastValue">-</p>
-
                 </div>
 
-
                 <div class="metric">
-
                     <h4>Glare</h4>
-
                     <p id="glareValue">-</p>
-
                 </div>
 
             </div>
-
-
-            <!-- Detected Problems -->
 
             <div class="quality-problems">
 
@@ -215,9 +181,6 @@
 
             </div>
 
-
-            <!-- Suggestions -->
-
             <div class="quality-suggestion">
 
                 <h3>Suggestion</h3>
@@ -225,9 +188,6 @@
                 <p id="qualitySuggestion"></p>
 
             </div>
-
-
-            <!-- Quality Summary -->
 
             <div class="quality-summary">
 
@@ -256,6 +216,40 @@
 
 
         <!-- ================================= -->
+        <!-- PART 6: AI QUESTION ANSWERING -->
+        <!-- ================================= -->
+
+        <div id="askSection" style="display: none;">
+
+            <h2>Ask Helping Eyes</h2>
+
+            <p>
+                Ask a question about the text in your captured document.
+            </p>
+
+            <form id="askForm">
+
+                <label for="questionInput">
+                    Enter your question:
+                </label>
+
+                <input type="text" id="questionInput" placeholder="e.g. What is the company revenue?" maxlength="500"
+                    required>
+
+                <button type="submit" id="askButton">
+                    Ask
+                </button>
+
+            </form>
+
+            <p id="askStatus" aria-live="polite"></p>
+
+            <div id="answerResult" aria-live="polite"></div>
+
+        </div>
+
+
+        <!-- ================================= -->
         <!-- PART 5: TEXT-TO-SPEECH SECTION -->
         <!-- ================================= -->
 
@@ -266,7 +260,6 @@
             <p>
                 Listen to the text recognized by Helping Eyes.
             </p>
-
 
             <!-- Voice Selection -->
 
