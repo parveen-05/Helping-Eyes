@@ -14,7 +14,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from app.vision import assess_quality, read_text_enhanced, recognize_text
+from app.vision import (
+    assess_quality,
+    correct_document_perspective,
+    read_text_enhanced,
+    recognize_text
+)
 from app.assistant import ask_ollama
 
 
