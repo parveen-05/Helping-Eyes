@@ -1,32 +1,34 @@
-# Helping Eyes 👁️
+# Helping Eyes 2.0 👁️
 
-### An OCR-Based Accessibility Application with Real-Time Text Recognition and Text-to-Speech
+### An AI-Powered Accessibility Application for OCR, Real-Time Text Recognition, Text-to-Speech and Document Question Answering
 
-Helping Eyes is an accessibility-focused application designed to make printed and digital text easier to access through image processing, Optical Character Recognition (OCR), real-time camera recognition, and Text-to-Speech (TTS).
+Helping Eyes 2.0 is an accessibility-focused application designed to make printed and digital text easier to access through computer vision, Optical Character Recognition (OCR), real-time camera recognition, Text-to-Speech (TTS), and locally powered Artificial Intelligence.
 
-Users can upload an image or use a live camera feed to extract text. The recognized text can then be converted into speech, allowing users to listen instead of relying entirely on visual reading.
+The application allows users to upload images or capture text using a live camera feed. Recognized text can be read aloud using Text-to-Speech or queried using a locally running AI assistant.
+
+By integrating OCR with local Large Language Models (LLMs), Helping Eyes provides an interactive way to understand and access information from captured documents.
 
 ---
 
 ## ✨ Features
 
 ### 1. Image Upload and OCR
-- Upload images containing text.
+- Upload images containing printed or digital text.
 - Assess image quality before OCR processing.
 - Apply image enhancement to improve recognition.
 - Extract text from uploaded images.
-- Display recognized text.
+- Display recognized text through the application interface.
 
 ### 2. Image Quality Assessment
 - Evaluate uploaded image quality.
-- Identify issues affecting OCR.
-- Automatically select suitable image enhancement.
-- Improve input images before text recognition.
+- Identify conditions that may affect OCR accuracy.
+- Automatically select suitable image enhancement techniques.
+- Improve image input before text recognition.
 
 ### 3. Live Camera Integration
 - Access the device camera through the browser.
 - Capture live camera frames.
-- Process camera input without manual uploads.
+- Process camera input without requiring manual uploads.
 
 ### 4. Real-Time OCR
 - Extract text from live camera frames.
@@ -34,14 +36,69 @@ Users can upload an image or use a live camera feed to extract text. The recogni
 - Continuously update OCR results.
 
 ### 5. Text-to-Speech
-- Convert uploaded-image OCR results into speech.
-- Convert real-time OCR results into speech.
+- Convert extracted OCR text into speech.
+- Read text recognized through live camera processing.
 - Select available browser voices.
 - Adjust speech speed.
-- Pause, resume, and stop playback.
+- Pause, resume, and stop speech playback.
 - Display speech playback status.
 
-Speech is activated manually to avoid repeatedly reading the same text during continuous camera recognition.
+### 6. AI-Powered Document Question Answering
+- Ask natural-language questions about uploaded documents.
+- Generate answers using extracted OCR text.
+- Use Ollama for locally hosted LLM inference.
+- Integrate the Qwen 3.5 4B model.
+- Provide document-grounded answers instead of relying on unrelated external information.
+- Handle questions whose answers are unavailable in the captured text.
+- Keep document content separate from system instructions.
+
+---
+
+## 🧠 AI Integration
+
+Helping Eyes integrates a locally running Large Language Model through Ollama.
+
+**AI Technology Stack:**
+- **Ollama:** Local LLM inference and model management.
+- **Qwen 3.5 4B:** Language model used for question answering.
+- **Python:** Backend integration and request handling.
+- **FastAPI:** API endpoint for AI question answering.
+
+### AI Question Answering Workflow
+
+1. The user uploads an image containing text.
+2. The backend processes the image and extracts text using OCR.
+3. Extracted text is stored and associated with a document ID.
+4. The user enters a question through the Ask Helping Eyes interface.
+5. The frontend sends the question and document ID to the backend.
+6. The backend retrieves the corresponding OCR text.
+7. The extracted text and question are passed to the local Ollama model.
+8. The model generates an answer based on the captured document content.
+9. The generated answer is returned and displayed to the user.
+
+The AI assistant is designed to answer using the supplied OCR content and to indicate when requested information cannot be found in the captured text.
+
+---
+
+## 🏗️ System Architecture
+
+Helping Eyes follows a frontend-backend architecture.
+
+### Image Upload and OCR Pipeline
+
+User Image → FastAPI Backend → Image Quality Assessment → Image Enhancement → OCR Processing → Extracted Text → Frontend Display
+
+### Real-Time OCR Pipeline
+
+Live Camera → Frame Capture → FastAPI Backend → Image Processing → OCR → Recognized Text → Frontend Display
+
+### Text-to-Speech Pipeline
+
+Recognized Text → Voice Selection → Speech Synthesis → Audio Playback → Pause / Resume / Stop
+
+### AI Question Answering Pipeline
+
+Uploaded Document → OCR Extraction → Document Text Storage → User Question → FastAPI `/api/ask` → Ollama → Qwen 3.5 4B → Generated Answer → Frontend Display
 
 ---
 
@@ -58,66 +115,44 @@ Speech is activated manually to avoid repeatedly reading the same text during co
 | CSS3 | Frontend styling |
 | JavaScript | Frontend functionality and camera interaction |
 | Web Speech API | Browser-based Text-to-Speech |
+| Ollama | Local Large Language Model inference |
+| Qwen 3.5 4B | AI-powered question answering |
 | Uvicorn | ASGI server |
-
----
-
-## 🏗️ System Architecture
-
-The application follows a frontend-backend architecture.
-
-### Image Upload Workflow
-1. User uploads an image.
-2. The frontend sends it to the FastAPI backend.
-3. Image quality is assessed.
-4. Image enhancement is applied when appropriate.
-5. OCR extracts text from the processed image.
-6. Recognized text is returned to the frontend.
-7. The user can read or listen to the extracted text.
-
-### Real-Time Camera Workflow
-1. User grants camera permission.
-2. The browser captures camera frames.
-3. Frames are sent to the OCR backend.
-4. Image processing and OCR are performed.
-5. Recognized text is returned to the frontend.
-6. The frontend displays updated results.
-7. The user can manually activate Text-to-Speech.
-
-### Text-to-Speech Workflow
-1. The application retrieves the latest recognized text.
-2. The user selects a voice and speech rate.
-3. A SpeechSynthesisUtterance is created.
-4. The browser's SpeechSynthesis engine reads the text.
-5. The user can pause, resume, or stop playback.
 
 ---
 
 ## 📁 Project Structure
 
 ```text
-Helping-Eyes/
+HelpingEyes-Parveen/
+│
 ├── app/
 │   ├── __init__.py
+│   ├── assistant.py
 │   ├── vision.py
+│   │
 │   ├── static/
 │   │   ├── app.js
 │   │   └── style.css
+│   │
 │   └── templates/
 │       └── index.html
-├── test_images/
-├── tests/
+│
 ├── uploads/
+├── test_images/
+│
 ├── .gitignore
 ├── README.md
 └── requirements.txt
 ```
 
 ### Important Files
-- `app/__init__.py` – FastAPI application and backend routes.
-- `app/vision.py` – Image processing, quality assessment, enhancement, and OCR functionality.
+
+- `app/__init__.py` – FastAPI application, backend routes, document text storage and API handling.
+- `app/assistant.py` – Ollama integration and AI-powered document question answering.
+- `app/vision.py` – Image processing, image quality assessment, enhancement and OCR functionality.
 - `app/templates/index.html` – Main application interface.
-- `app/static/app.js` – Frontend logic, camera integration, OCR interaction, and Text-to-Speech.
+- `app/static/app.js` – Frontend functionality, camera integration, API interaction and Text-to-Speech.
 - `app/static/style.css` – Application styling.
 - `requirements.txt` – Python dependencies.
 
@@ -126,17 +161,20 @@ Helping-Eyes/
 ## ⚙️ Installation and Setup
 
 ### Prerequisites
+
 - Python 3 installed.
 - Git.
 - A modern web browser.
 - macOS for Apple Vision OCR integration.
+- Ollama installed and running for AI question answering.
 - Camera access for real-time OCR.
 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/parveen-05/Helping-Eyes.git
-cd Helping-Eyes
+git clone https://github.com/parveen-05/HelpingEyes-Parveen.git
+
+cd HelpingEyes-Parveen
 ```
 
 ### 2. Create a Virtual Environment
@@ -155,41 +193,69 @@ source .venv/bin/activate
 
 ```bash
 pip install --upgrade pip
+
 pip install -r requirements.txt
 ```
 
-### 5. Start the Application
+### 5. Set Up Ollama
+
+Install Ollama and download the required model:
+
+```bash
+ollama pull qwen3.5:4b
+```
+
+Start Ollama:
+
+```bash
+ollama serve
+```
+
+Ensure that the local Ollama service is available at:
+
+```text
+http://127.0.0.1:11434
+```
+
+### 6. Start the FastAPI Application
+
+Open another terminal, activate the virtual environment, navigate to the project directory and run:
 
 ```bash
 uvicorn app:app --reload
 ```
 
-### 6. Open in Browser
+### 7. Open the Application
 
 Visit:
 
+```text
 http://127.0.0.1:8000
+```
+
+Interactive API documentation:
+
+```text
+http://127.0.0.1:8000/docs
+```
 
 ---
 
 ## 🔌 API Endpoints
 
-| Endpoint | Purpose |
-|---|---|
-| `/` | Main application interface |
-| `/api/health` | Application health check |
-| `/api/upload` | Image upload and OCR processing |
-| `/api/ocr/frame` | Real-time camera-frame OCR processing |
-
-Interactive API documentation:
-
-http://127.0.0.1:8000/docs
+| Method | Endpoint | Purpose |
+|---|---|---|
+| GET | `/` | Main application interface |
+| GET | `/api/health` | Application health check |
+| POST | `/api/upload` | Image upload and OCR processing |
+| POST | `/api/ocr/frame` | Real-time camera-frame OCR |
+| POST | `/api/ask` | AI-powered document question answering |
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing and Validation
 
-The application was tested for:
+The application was tested for the following functionalities:
 
 - Image upload and OCR extraction.
 - Image quality assessment.
@@ -199,16 +265,20 @@ The application was tested for:
 - Text-to-Speech for uploaded images.
 - Text-to-Speech for live OCR results.
 - Voice selection and speech-rate adjustment.
-- Pause, resume, and stop functionality.
-- Empty OCR text handling.
+- Pause, resume and stop functionality.
+- AI question submission.
+- Ollama integration.
+- Document-specific question answering.
+- AI-generated answer display.
+- Browser console error verification.
 
-JavaScript syntax validation:
+### JavaScript Syntax Validation
 
 ```bash
 node --check app/static/app.js
 ```
 
-FastAPI application loading validation:
+### FastAPI Application Loading Validation
 
 ```bash
 python -c "from app import app; print('FastAPI application loaded successfully')"
@@ -218,7 +288,11 @@ python -c "from app import app; print('FastAPI application loaded successfully')
 
 ## 🌍 Project Objective
 
-Helping Eyes aims to improve accessibility by combining computer vision and speech technologies. It provides an alternative way to interact with printed and digital text through image processing, OCR, live camera recognition, and Text-to-Speech.
+Helping Eyes aims to improve accessibility by combining computer vision, speech technologies and locally hosted Artificial Intelligence.
+
+By integrating OCR, real-time camera recognition, Text-to-Speech and document-based question answering, the application provides users with multiple ways to interact with and understand captured text.
+
+The integration of local LLM inference also enables document question answering without depending on cloud-based AI APIs.
 
 ---
 
@@ -227,8 +301,9 @@ Helping Eyes aims to improve accessibility by combining computer vision and spee
 - Multilingual OCR and speech support.
 - Improved recognition under difficult lighting conditions.
 - Support for additional document and image formats.
+- Voice-based interaction with the AI assistant.
+- Improved document understanding and contextual question answering.
 - Further accessibility and usability improvements.
-- Additional language and voice options.
 
 ---
 
@@ -236,9 +311,11 @@ Helping Eyes aims to improve accessibility by combining computer vision and spee
 
 **Parveen RT**  
 Computer Science and Engineering  
-RV University
+RV University, Bengaluru
 
-**GitHub:** https://github.com/parveen-05/Helping-Eyes
+**GitHub:** [parveen-05](https://github.com/parveen-05)
+
+**Project Repository:** [HelpingEyes-Parveen](https://github.com/parveen-05/HelpingEyes-Parveen)
 
 ---
 
