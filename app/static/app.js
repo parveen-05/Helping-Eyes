@@ -13,10 +13,11 @@ const ocrResult = document.getElementById("resultSection");
 const extractedText = document.getElementById("result");
 
 // =============================================
-// AI QUESTION ANSWERING ELEMENTS
+// PART 6: AI QUESTION ANSWERING ELEMENTS
 // =============================================
 
 let currentDocumentId = null;
+let aiRequestInProgress = false;
 
 const askSection = document.getElementById("askSection");
 const askForm = document.getElementById("askForm");
@@ -25,7 +26,17 @@ const askButton = document.getElementById("askButton");
 const askStatus = document.getElementById("askStatus");
 const answerResult = document.getElementById("answerResult");
 
-// Image quality elements
+// Voice AI elements
+const voiceQuestionButton =
+    document.getElementById("voiceQuestionButton");
+
+const voiceQuestionStatus =
+    document.getElementById("voiceQuestionStatus");
+
+// =============================================
+// IMAGE QUALITY ELEMENTS
+// =============================================
+
 const qualityResult = document.getElementById("qualitySection");
 const qualityStatus = document.getElementById("qualityStatus");
 
@@ -91,12 +102,10 @@ let cameraStream = null;
 let capturedFile = null;
 let capturedImageURL = null;
 
-// Real-time OCR state
 let realtimeActive = false;
 let realtimeTimer = null;
 let processingFrame = false;
 
-// Capture a frame every 1.5 seconds
 const REALTIME_INTERVAL = 1500;
 
 // =============================================
@@ -123,7 +132,6 @@ function displayQualityReport(quality) {
 
     }
 
-    // Display measurements
     sharpnessValue.textContent =
         Number(quality.sharpness).toFixed(2);
 
@@ -136,7 +144,6 @@ function displayQualityReport(quality) {
     glareValue.textContent =
         (Number(quality.glare_fraction) * 100).toFixed(2) + "%";
 
-    // Display detected problems
     qualityProblems.replaceChildren();
 
     if (quality.problems && quality.problems.length > 0) {
@@ -163,7 +170,6 @@ function displayQualityReport(quality) {
 
     }
 
-    // Display suggestions and summary
     qualitySuggestion.textContent =
         quality.suggestion || "No suggestions available.";
 
@@ -190,11 +196,23 @@ function resetAISection() {
 
     askButton.disabled = false;
 
+    aiRequestInProgress = false;
+
+    if (voiceRecognitionActive && voiceRecognition) {
+
+        voiceRecognition.abort();
+
+    }
+
+    voiceQuestionButton.disabled = false;
+
+    voiceQuestionStatus.textContent =
+        "Microphone ready.";
+
 }
 
 // =============================================
 // COMMON IMAGE UPLOAD FUNCTION
-// Used by normal upload and camera capture
 // =============================================
 
 async function uploadImage(file, source) {
@@ -218,7 +236,6 @@ async function uploadImage(file, source) {
     ocrResult.style.display = "none";
     qualityResult.style.display = "none";
 
-    // Reset previous AI session
     resetAISection();
 
     extractedText.textContent = "";
@@ -229,8 +246,11 @@ async function uploadImage(file, source) {
     try {
 
         const response = await fetch("/api/upload", {
+
             method: "POST",
+
             body: formData
+
         });
 
         const result = await response.json();
@@ -243,10 +263,8 @@ async function uploadImage(file, source) {
 
         }
 
-        // Store uploaded document ID
         currentDocumentId = result.document_id;
 
-        // Show AI question section
         if (currentDocumentId) {
 
             askSection.style.display = "block";
@@ -256,14 +274,12 @@ async function uploadImage(file, source) {
         uploadStatus.textContent =
             `${result.message} File: ${result.filename}`;
 
-        // Display image quality report
         if (result.quality) {
 
             displayQualityReport(result.quality);
 
         }
 
-        // Display OCR text
         extractedText.textContent =
             result.extracted_text ||
             "No text detected in the image.";
@@ -375,12 +391,10 @@ startCameraButton.addEventListener("click", async () => {
 
         await cameraPreview.play();
 
-        // Enable camera controls
         startCameraButton.disabled = true;
         captureButton.disabled = false;
         stopCameraButton.disabled = false;
 
-        // Enable real-time OCR
         startRealtimeButton.disabled = false;
 
         realtimeStatus.textContent =
@@ -405,22 +419,19 @@ startCameraButton.addEventListener("click", async () => {
 });
 
 // =============================================
-// PART 4: CAPTURE AND PROCESS CAMERA FRAME
+// PART 4: PROCESS CAMERA FRAME
 // =============================================
 
 async function processRealtimeFrame() {
 
-    // Prevent processing if OCR is stopped
     if (!realtimeActive || !cameraStream) {
         return;
     }
 
-    // Prevent overlapping frame requests
     if (processingFrame) {
         return;
     }
 
-    // Check camera readiness
     if (
         cameraPreview.readyState < 2 ||
         !cameraPreview.videoWidth ||
@@ -436,7 +447,6 @@ async function processRealtimeFrame() {
         const width = cameraPreview.videoWidth;
         const height = cameraPreview.videoHeight;
 
-        // Set canvas dimensions
         cameraCanvas.width = width;
         cameraCanvas.height = height;
 
@@ -450,7 +460,6 @@ async function processRealtimeFrame() {
 
         }
 
-        // Draw current camera frame
         context.drawImage(
             cameraPreview,
             0,
@@ -462,7 +471,6 @@ async function processRealtimeFrame() {
         realtimeStatus.textContent =
             "Capturing frame and recognizing text...";
 
-        // Convert frame into JPEG
         const blob = await new Promise((resolve, reject) => {
 
             cameraCanvas.toBlob((imageBlob) => {
@@ -483,7 +491,6 @@ async function processRealtimeFrame() {
 
         });
 
-        // Create form data
         const formData = new FormData();
 
         formData.append(
@@ -492,7 +499,6 @@ async function processRealtimeFrame() {
             "realtime-frame.jpg"
         );
 
-        // Send frame to FastAPI real-time OCR endpoint
         const response = await fetch("/api/ocr/frame", {
 
             method: "POST",
@@ -511,12 +517,10 @@ async function processRealtimeFrame() {
 
         }
 
-        // Display recognized text
         realtimeResult.textContent =
             result.extracted_text ||
             "No text detected. Adjust the camera position.";
 
-        // Display confidence
         realtimeConfidence.textContent =
             `Average OCR confidence: ${(result.average_confidence * 100).toFixed(1)}%`;
 
@@ -567,10 +571,8 @@ startRealtimeButton.addEventListener("click", () => {
     realtimeStatus.textContent =
         "Starting real-time OCR...";
 
-    // Process the first frame immediately
     processRealtimeFrame();
 
-    // Continue processing frames at fixed intervals
     realtimeTimer = setInterval(
         processRealtimeFrame,
         REALTIME_INTERVAL
@@ -751,7 +753,6 @@ stopCameraButton.addEventListener("click", () => {
 
 function stopCamera() {
 
-    // Stop real-time OCR first
     stopRealtimeOCR();
 
     if (cameraStream) {
@@ -770,7 +771,6 @@ function stopCamera() {
 
     cameraPreview.style.display = "none";
 
-    // Reset camera controls
     startCameraButton.disabled = false;
     captureButton.disabled = true;
     stopCameraButton.disabled = true;
@@ -778,7 +778,6 @@ function stopCamera() {
     startRealtimeButton.disabled = true;
     stopRealtimeButton.disabled = true;
 
-    // Keep capturedFile for later upload
     cameraStatus.textContent =
         "Camera stopped.";
 
@@ -795,7 +794,6 @@ function stopCamera() {
 
 window.addEventListener("pagehide", () => {
 
-    // Stop real-time OCR
     realtimeActive = false;
 
     if (realtimeTimer !== null) {
@@ -806,7 +804,6 @@ window.addEventListener("pagehide", () => {
 
     }
 
-    // Stop camera tracks
     if (cameraStream) {
 
         cameraStream.getTracks().forEach((track) => {
@@ -819,12 +816,17 @@ window.addEventListener("pagehide", () => {
 
     }
 
-    // Release preview URL
     if (capturedImageURL) {
 
         URL.revokeObjectURL(capturedImageURL);
 
         capturedImageURL = null;
+
+    }
+
+    if (voiceRecognitionActive && voiceRecognition) {
+
+        voiceRecognition.abort();
 
     }
 
@@ -864,13 +866,12 @@ const speechStatus = document.getElementById("speechStatus");
 
 const speechEngine = window.speechSynthesis;
 
-// Current speech request
-
 let currentUtterance = null;
 
-// Store the latest OCR results from both sources
+// Store latest OCR results
 
 const recognizedTexts = {
+
     upload: {
         text: "",
         updatedAt: 0
@@ -880,6 +881,7 @@ const recognizedTexts = {
         text: "",
         updatedAt: 0
     }
+
 };
 
 // =============================================
@@ -914,8 +916,6 @@ function updateRecognizedText(source, element) {
 // MONITOR OCR RESULT CHANGES
 // =============================================
 
-// Observe image upload OCR results
-
 const uploadTextObserver = new MutationObserver(() => {
 
     updateRecognizedText("upload", extractedText);
@@ -923,12 +923,12 @@ const uploadTextObserver = new MutationObserver(() => {
 });
 
 uploadTextObserver.observe(extractedText, {
+
     childList: true,
     characterData: true,
     subtree: true
-});
 
-// Observe real-time OCR results
+});
 
 const realtimeTextObserver = new MutationObserver(() => {
 
@@ -937,9 +937,11 @@ const realtimeTextObserver = new MutationObserver(() => {
 });
 
 realtimeTextObserver.observe(realtimeResult, {
+
     childList: true,
     characterData: true,
     subtree: true
+
 });
 
 // =============================================
@@ -949,8 +951,10 @@ realtimeTextObserver.observe(realtimeResult, {
 function getLatestRecognizedText() {
 
     const latestResults = [
+
         recognizedTexts.upload,
         recognizedTexts.realtime
+
     ].sort((a, b) => b.updatedAt - a.updatedAt);
 
     for (const result of latestResults) {
@@ -962,15 +966,15 @@ function getLatestRecognizedText() {
         }
 
         const invalidMessages = [
+
             "Your extracted text will appear here.",
             "Recognized text will appear here.",
             "No text detected in the image.",
             "No text detected. Adjust the camera position."
+
         ];
 
-        if (
-            invalidMessages.includes(text)
-        ) {
+        if (invalidMessages.includes(text)) {
             continue;
         }
 
@@ -998,8 +1002,6 @@ function loadSpeechVoices() {
 
     voiceSelect.replaceChildren();
 
-    // Default voice option
-
     const defaultOption = document.createElement("option");
 
     defaultOption.value = "";
@@ -1007,8 +1009,6 @@ function loadSpeechVoices() {
     defaultOption.textContent = "Default Voice";
 
     voiceSelect.appendChild(defaultOption);
-
-    // Add available browser voices
 
     voices.forEach((voice, index) => {
 
@@ -1022,8 +1022,6 @@ function loadSpeechVoices() {
         voiceSelect.appendChild(option);
 
     });
-
-    // Restore selected voice if available
 
     if (
         selectedVoice !== "" &&
@@ -1041,13 +1039,9 @@ function loadSpeechVoices() {
 
 }
 
-// Load voices initially
-
 if (speechEngine) {
 
     loadSpeechVoices();
-
-    // Some browsers load voices asynchronously
 
     speechEngine.addEventListener(
         "voiceschanged",
@@ -1085,10 +1079,11 @@ function updateSpeechControls(isSpeaking, isPaused) {
 }
 
 // =============================================
-// SPEAK RECOGNIZED TEXT
+// SPEAK TEXT
+// Supports OCR text and AI answers
 // =============================================
 
-function speakRecognizedText() {
+function speakRecognizedText(textOverride = "") {
 
     if (!speechEngine) {
 
@@ -1099,9 +1094,10 @@ function speakRecognizedText() {
 
     }
 
-    // Get the latest OCR result
-
-    const text = getLatestRecognizedText();
+    const text =
+        typeof textOverride === "string" && textOverride.trim()
+            ? textOverride.trim()
+            : getLatestRecognizedText();
 
     if (!text) {
 
@@ -1112,24 +1108,16 @@ function speakRecognizedText() {
 
     }
 
-    // Stop any previous speech
-
     speechEngine.cancel();
 
     currentUtterance = null;
 
     updateSpeechControls(false, false);
 
-    // Create a new speech request
-
     const utterance =
         new SpeechSynthesisUtterance(text);
 
-    // Apply selected speech speed
-
     utterance.rate = Number(speechRate.value);
-
-    // Apply selected voice
 
     const voices = speechEngine.getVoices();
 
@@ -1145,18 +1133,16 @@ function speakRecognizedText() {
 
     }
 
-    // Speech start event
-
     utterance.onstart = () => {
 
         speechStatus.textContent =
-            "Speaking recognized text...";
+            textOverride
+                ? "Speaking AI-generated answer..."
+                : "Speaking recognized text...";
 
         updateSpeechControls(true, false);
 
     };
-
-    // Speech completion event
 
     utterance.onend = () => {
 
@@ -1169,12 +1155,12 @@ function speakRecognizedText() {
 
     };
 
-    // Speech error event
-
     utterance.onerror = (event) => {
 
-        if (event.error === "canceled" ||
-            event.error === "interrupted") {
+        if (
+            event.error === "canceled" ||
+            event.error === "interrupted"
+        ) {
 
             return;
 
@@ -1194,11 +1180,7 @@ function speakRecognizedText() {
 
     };
 
-    // Store current speech request
-
     currentUtterance = utterance;
-
-    // Start speaking
 
     speechEngine.speak(utterance);
 
@@ -1206,7 +1188,9 @@ function speakRecognizedText() {
         "Preparing speech...";
 
     console.log(
-        "Speaking OCR text:",
+        textOverride
+            ? "Speaking AI answer:"
+            : "Speaking OCR text:",
         text
     );
 
@@ -1311,11 +1295,9 @@ console.log(
 // PART 6: AI QUESTION ANSWERING
 // =============================================
 
-askForm.addEventListener("submit", async (event) => {
+// COMMON AI QUESTION SUBMISSION FUNCTION
 
-    event.preventDefault();
-
-    const question = questionInput.value.trim();
+async function submitQuestion(question, speakAnswer = false) {
 
     if (!currentDocumentId) {
 
@@ -1326,7 +1308,7 @@ askForm.addEventListener("submit", async (event) => {
 
     }
 
-    if (!question) {
+    if (!question || !question.trim()) {
 
         askStatus.textContent =
             "Please enter a question.";
@@ -1335,7 +1317,19 @@ askForm.addEventListener("submit", async (event) => {
 
     }
 
+    if (aiRequestInProgress) {
+
+        askStatus.textContent =
+            "An AI question is already being processed.";
+
+        return;
+
+    }
+
+    aiRequestInProgress = true;
+
     askButton.disabled = true;
+    voiceQuestionButton.disabled = true;
 
     askStatus.textContent =
         "Thinking... Please wait while Helping Eyes finds the answer.";
@@ -1353,8 +1347,11 @@ askForm.addEventListener("submit", async (event) => {
             },
 
             body: JSON.stringify({
+
                 document_id: currentDocumentId,
-                question: question
+
+                question: question.trim()
+
             })
 
         });
@@ -1369,13 +1366,23 @@ askForm.addEventListener("submit", async (event) => {
 
         }
 
-        answerResult.textContent =
+        const answer =
             result.answer || "No answer was returned.";
+
+        answerResult.textContent = answer;
 
         askStatus.textContent =
             "Answer generated successfully!";
 
         console.log("AI question response:", result);
+
+        // AUTOMATICALLY SPEAK VOICE-BASED AI ANSWERS
+
+        if (speakAnswer && result.answer) {
+
+            speakRecognizedText(result.answer);
+
+        }
 
     } catch (error) {
 
@@ -1386,11 +1393,219 @@ askForm.addEventListener("submit", async (event) => {
 
     } finally {
 
+        aiRequestInProgress = false;
+
         askButton.disabled = false;
+        voiceQuestionButton.disabled = false;
 
     }
 
+}
+
+// =============================================
+// EXISTING TEXT-BASED QUESTION SUBMISSION
+// =============================================
+
+askForm.addEventListener("submit", async (event) => {
+
+    event.preventDefault();
+
+    const question = questionInput.value.trim();
+
+    await submitQuestion(question, false);
+
 });
+
+// =============================================
+// PART 7: VOICE-BASED AI QUESTION INPUT
+// =============================================
+
+// Browser Speech Recognition API
+
+const SpeechRecognitionAPI =
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+let voiceRecognition = null;
+
+let voiceRecognitionActive = false;
+
+// =============================================
+// CHECK SPEECH RECOGNITION SUPPORT
+// =============================================
+
+if (SpeechRecognitionAPI) {
+
+    voiceRecognition = new SpeechRecognitionAPI();
+
+    voiceRecognition.lang = "en-IN";
+
+    voiceRecognition.continuous = false;
+
+    voiceRecognition.interimResults = false;
+
+    voiceRecognition.maxAlternatives = 1;
+
+    // =========================================
+    // MICROPHONE STARTED
+    // =========================================
+
+    voiceRecognition.onstart = () => {
+
+        voiceRecognitionActive = true;
+
+        voiceQuestionButton.textContent =
+            "Stop Listening";
+
+        voiceQuestionStatus.textContent =
+            "Listening... Please ask your question.";
+
+    };
+
+    // =========================================
+    // SPEECH RECOGNIZED
+    // =========================================
+
+    voiceRecognition.onresult = async (event) => {
+
+        const question =
+            event.results[0][0].transcript.trim();
+
+        if (!question) {
+
+            voiceQuestionStatus.textContent =
+                "No question detected. Please try again.";
+
+            return;
+
+        }
+
+        console.log(
+            "Voice question recognized:",
+            question
+        );
+
+        // Put recognized question into existing input
+
+        questionInput.value = question;
+
+        voiceQuestionStatus.textContent =
+            "Question recognized: " + question;
+
+        // Submit question to existing AI endpoint
+        // Automatically speak the generated answer
+
+        await submitQuestion(question, true);
+
+    };
+
+    // =========================================
+    // MICROPHONE ERROR
+    // =========================================
+
+    voiceRecognition.onerror = (event) => {
+
+        voiceQuestionStatus.textContent =
+            "Voice recognition error: " + event.error;
+
+        console.error(
+            "Voice recognition error:",
+            event.error
+        );
+
+    };
+
+    // =========================================
+    // MICROPHONE STOPPED
+    // =========================================
+
+    voiceRecognition.onend = () => {
+
+        voiceRecognitionActive = false;
+
+        voiceQuestionButton.textContent =
+            "Ask by Voice 🎤";
+
+        if (
+            voiceQuestionStatus.textContent.startsWith("Listening")
+        ) {
+
+            voiceQuestionStatus.textContent =
+                "Microphone ready.";
+
+        }
+
+    };
+
+    // =========================================
+    // MICROPHONE BUTTON
+    // =========================================
+
+    voiceQuestionButton.addEventListener("click", () => {
+
+        if (!currentDocumentId) {
+
+            voiceQuestionStatus.textContent =
+                "Please upload an image first.";
+
+            return;
+
+        }
+
+        if (aiRequestInProgress) {
+
+            voiceQuestionStatus.textContent =
+                "Please wait for the current AI answer.";
+
+            return;
+
+        }
+
+        if (voiceRecognitionActive) {
+
+            voiceRecognition.stop();
+
+            return;
+
+        }
+
+        try {
+
+            voiceQuestionStatus.textContent =
+                "Requesting microphone access...";
+
+            voiceRecognition.start();
+
+        } catch (error) {
+
+            voiceQuestionStatus.textContent =
+                "Unable to start microphone: " + error.message;
+
+            console.error(
+                "Microphone start error:",
+                error
+            );
+
+        }
+
+    });
+
+} else {
+
+    voiceQuestionButton.disabled = true;
+
+    voiceQuestionStatus.textContent =
+        "Speech recognition is not supported by this browser. Try Chrome or another supported browser.";
+
+}
+
+// =============================================
+// VOICE AI INITIALIZATION
+// =============================================
+
+console.log(
+    "Helping Eyes Voice AI module initialized!"
+);
 
 console.log(
     "Helping Eyes AI Question Answering module initialized!"

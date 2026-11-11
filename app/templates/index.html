@@ -20,10 +20,7 @@
             Upload an image or use your camera to extract and understand text.
         </p>
 
-
-        <!-- ================================= -->
         <!-- LIVE CAMERA SECTION -->
-        <!-- ================================= -->
 
         <div class="camera-container">
 
@@ -33,11 +30,9 @@
                 Use your camera to capture text directly.
             </p>
 
-            <video id="cameraPreview" autoplay playsinline muted style="display: none;">
-            </video>
+            <video id="cameraPreview" autoplay playsinline muted style="display: none;"></video>
 
-            <canvas id="cameraCanvas" style="display: none;">
-            </canvas>
+            <canvas id="cameraCanvas" style="display: none;"></canvas>
 
             <div class="camera-controls">
 
@@ -57,10 +52,7 @@
 
             <p id="cameraStatus" aria-live="polite"></p>
 
-
-            <!-- ================================= -->
-            <!-- PART 4: REAL-TIME OCR CONTROLS -->
-            <!-- ================================= -->
+            <!-- REAL-TIME OCR -->
 
             <div class="realtime-ocr-container">
 
@@ -100,10 +92,7 @@
 
             </div>
 
-
-            <!-- ================================= -->
             <!-- CAPTURED IMAGE PREVIEW -->
-            <!-- ================================= -->
 
             <div class="captured-image-container">
 
@@ -119,10 +108,7 @@
 
         </div>
 
-
-        <!-- ================================= -->
-        <!-- IMAGE UPLOAD SECTION -->
-        <!-- ================================= -->
+        <!-- IMAGE UPLOAD -->
 
         <div class="upload-container">
 
@@ -138,10 +124,7 @@
 
         </div>
 
-
-        <!-- ================================= -->
         <!-- IMAGE QUALITY REPORT -->
-        <!-- ================================= -->
 
         <div id="qualitySection" style="display: none;">
 
@@ -199,10 +182,7 @@
 
         </div>
 
-
-        <!-- ================================= -->
-        <!-- OCR RESULT SECTION -->
-        <!-- ================================= -->
+        <!-- OCR RESULT -->
 
         <div id="resultSection">
 
@@ -214,10 +194,7 @@
 
         </div>
 
-
-        <!-- ================================= -->
         <!-- PART 6: AI QUESTION ANSWERING -->
-        <!-- ================================= -->
 
         <div id="askSection" style="display: none;">
 
@@ -242,26 +219,44 @@
 
             </form>
 
+            <!-- VOICE-BASED AI QUESTION INPUT -->
+
+            <div class="voice-question-controls">
+
+                <h3>Voice Question</h3>
+
+                <p>
+                    Ask your question using your microphone.
+                </p>
+
+                <button type="button" id="voiceQuestionButton">
+                    Ask by Voice 🎤
+                </button>
+
+                <p id="voiceQuestionStatus" aria-live="polite">
+                    Microphone ready.
+                </p>
+
+            </div>
+
             <p id="askStatus" aria-live="polite"></p>
 
             <div id="answerResult" aria-live="polite"></div>
 
         </div>
 
-
-        <!-- ================================= -->
-        <!-- PART 5: TEXT-TO-SPEECH SECTION -->
-        <!-- ================================= -->
+        <!-- PART 5: TEXT-TO-SPEECH -->
 
         <div class="tts-container">
 
             <h2>Text-to-Speech</h2>
 
             <p>
-                Listen to the text recognized by Helping Eyes.
+                Listen to the text recognized by Helping Eyes
+                or hear AI-generated answers.
             </p>
 
-            <!-- Voice Selection -->
+            <!-- VOICE SELECTION -->
 
             <div class="tts-setting">
 
@@ -279,8 +274,7 @@
 
             </div>
 
-
-            <!-- Speech Speed -->
+            <!-- SPEECH SPEED -->
 
             <div class="tts-setting">
 
@@ -294,8 +288,7 @@
 
             </div>
 
-
-            <!-- Speech Controls -->
+            <!-- SPEECH CONTROLS -->
 
             <div class="tts-controls">
 
@@ -317,22 +310,15 @@
 
             </div>
 
-
-            <!-- Speech Status -->
-
             <p id="speechStatus" aria-live="polite">
                 Ready to read recognized text.
             </p>
 
         </div>
 
-
     </div>
 
-
-    <!-- ================================= -->
     <!-- JAVASCRIPT -->
-    <!-- ================================= -->
 
     <script src="/static/app.js"></script>
 
