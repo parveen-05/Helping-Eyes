@@ -20,6 +20,7 @@ from app.vision import (
     read_text_enhanced,
     recognize_text
 )
+
 from app.assistant import ask_ollama
 
 
@@ -69,6 +70,7 @@ def store_ocr_text(extracted_text: str) -> str:
                 OCR_SESSIONS,
                 key=lambda key: OCR_SESSIONS[key]["created_at"]
             )
+
             del OCR_SESSIONS[oldest_id]
 
         document_id = uuid4().hex
@@ -143,18 +145,20 @@ def health_check():
 
 
 # ============================================================
-# PART 4: IMAGE UPLOAD AND ENHANCED OCR
+# PART 4: IMAGE UPLOAD, PERSPECTIVE CORRECTION AND ENHANCED OCR
 # ============================================================
 
 @app.post("/api/upload")
 async def upload_image(file: UploadFile = File(...)):
 
+    # 1. Validate uploaded file type.
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(
             status_code=400,
             detail="Please upload a valid image file."
         )
 
+    # 2. Read uploaded image data.
     image_data = await file.read()
 
     if len(image_data) > 10 * 1024 * 1024:
@@ -163,8 +167,13 @@ async def upload_image(file: UploadFile = File(...)):
             detail="Image size must be less than 10 MB."
         )
 
+    # 3. Decode image using OpenCV.
     image_array = np.frombuffer(image_data, dtype=np.uint8)
-    image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+
+    image = cv2.imdecode(
+        image_array,
+        cv2.IMREAD_COLOR
+    )
 
     if image is None:
         raise HTTPException(
@@ -172,6 +181,7 @@ async def upload_image(file: UploadFile = File(...)):
             detail="Unable to read the uploaded image."
         )
 
+    # 4. Generate a unique filename.
     extension = Path(file.filename or "").suffix.lower()
 
     if not extension or len(extension) > 10:
@@ -179,18 +189,34 @@ async def upload_image(file: UploadFile = File(...)):
 
     filename = f"{uuid4().hex}{extension}"
 
+    # 5. Save the ORIGINAL uploaded image.
     file_path = UPLOAD_DIR / filename
     file_path.write_bytes(image_data)
 
+    # 6. Assess quality of the original image.
     quality_report = assess_quality(image)
 
     print("Image Quality Report:")
     print(quality_report.summary())
 
-    extracted_text, best_variant = read_text_enhanced(image)
+    # 7. Automatically detect and correct document perspective.
+    processing_image, perspective_corrected = (
+        correct_document_perspective(image)
+    )
+
+    print(
+        "Perspective correction:",
+        "Applied" if perspective_corrected else "Not applied"
+    )
+
+    # 8. Perform enhanced OCR on the processed image.
+    extracted_text, best_variant = read_text_enhanced(
+        processing_image
+    )
 
     print(f"Best OCR image variant: {best_variant}")
 
+    # 9. Prepare image quality information.
     quality_data = {
         "acceptable": quality_report.ok(),
         "sharpness": quality_report.sharpness,
@@ -208,16 +234,18 @@ async def upload_image(file: UploadFile = File(...)):
         "summary": quality_report.summary()
     }
 
-    # Store extracted text for later AI questions.
+    # 10. Store extracted OCR text for later AI questions.
     document_id = store_ocr_text(extracted_text)
 
+    # 11. Return upload results.
     return {
         "message": "Image uploaded successfully!",
         "filename": filename,
         "size": len(image_data),
         "extracted_text": extracted_text,
         "document_id": document_id,
-        "quality": quality_data
+        "quality": quality_data,
+        "perspective_corrected": perspective_corrected
     }
 
 
@@ -228,12 +256,14 @@ async def upload_image(file: UploadFile = File(...)):
 @app.post("/api/ocr/frame")
 async def process_camera_frame(file: UploadFile = File(...)):
 
+    # 1. Validate camera frame.
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(
             status_code=400,
             detail="Please send a valid image frame."
         )
 
+    # 2. Read image data.
     image_data = await file.read()
 
     if not image_data:
@@ -248,6 +278,7 @@ async def process_camera_frame(file: UploadFile = File(...)):
             detail="Camera frame is too large."
         )
 
+    # 3. Decode camera frame.
     image_array = np.frombuffer(
         image_data,
         dtype=np.uint8
@@ -264,6 +295,7 @@ async def process_camera_frame(file: UploadFile = File(...)):
             detail="Unable to decode camera frame."
         )
 
+    # 4. Recognize text in the camera frame.
     lines = recognize_text(
         image,
         fast=True
@@ -273,6 +305,7 @@ async def process_camera_frame(file: UploadFile = File(...)):
         line.text for line in lines
     )
 
+    # 5. Calculate average OCR confidence.
     average_confidence = (
         sum(line.confidence for line in lines) / len(lines)
         if lines else 0.0
@@ -296,6 +329,7 @@ async def process_camera_frame(file: UploadFile = File(...)):
 @app.post("/api/ask")
 async def ask_question(request: AskRequest):
 
+    # 1. Validate question.
     question = request.question.strip()
 
     if not question:
@@ -304,6 +338,7 @@ async def ask_question(request: AskRequest):
             detail="Please enter a question."
         )
 
+    # 2. Retrieve OCR text using document ID.
     ocr_text = get_ocr_text(request.document_id)
 
     if ocr_text is None:
@@ -312,6 +347,7 @@ async def ask_question(request: AskRequest):
             detail="Document not found or session expired. Please upload the image again."
         )
 
+    # 3. Generate AI answer using Ollama.
     try:
         answer = await asyncio.to_thread(
             ask_ollama,
@@ -333,6 +369,7 @@ async def ask_question(request: AskRequest):
             detail="Unable to generate an answer. Please try again."
         ) from error
 
+    # 4. Return AI-generated answer.
     return {
         "message": "Answer generated successfully.",
         "document_id": request.document_id,

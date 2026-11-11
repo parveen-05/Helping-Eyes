@@ -484,13 +484,55 @@ def _order_document_corners(points: np.ndarray) -> np.ndarray:
     return ordered.astype(np.float32)
 
 
+
+def _fit_document_line(points: np.ndarray):
+    """Fit a robust line through boundary observations."""
+    if len(points) < 8:
+        return None
+
+    return cv2.fitLine(
+        np.asarray(points, dtype=np.float32),
+        cv2.DIST_L1,
+        0,
+        0.01,
+        0.01
+    ).flatten()
+
+
+def _intersect_document_lines(line_a, line_b):
+    """Calculate the intersection of two fitted lines."""
+    if line_a is None or line_b is None:
+        return None
+
+    vx1, vy1, x1, y1 = line_a
+    vx2, vy2, x2, y2 = line_b
+
+    matrix = np.array([
+        [vx1, -vx2],
+        [vy1, -vy2]
+    ], dtype=np.float64)
+
+    if abs(np.linalg.det(matrix)) < 1e-6:
+        return None
+
+    parameters = np.linalg.solve(
+        matrix,
+        np.array([x2 - x1, y2 - y1])
+    )
+
+    return np.array([
+        x1 + parameters[0] * vx1,
+        y1 + parameters[0] * vy1
+    ], dtype=np.float32)
+
+
 def correct_document_perspective(image: np.ndarray):
     """
-    Detect a complete document boundary and correct its perspective.
+    Detect document boundaries using GrabCut and fitted edges.
 
     Returns:
-        corrected_image: Corrected image or original image.
-        corrected: True when perspective correction succeeds.
+        Corrected image and True if correction succeeds.
+        Original image and False if detection is unreliable.
     """
 
     if image is None or image.size == 0:
@@ -504,77 +546,164 @@ def correct_document_perspective(image: np.ndarray):
     if height < 100 or width < 100:
         return image, False
 
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    try:
+        # ----------------------------------------------------
+        # 1. Initialize foreground/background segmentation
+        # ----------------------------------------------------
 
-    blurred = cv2.GaussianBlur(
-        gray,
-        (5, 5),
-        0
-    )
-
-    edges = cv2.Canny(
-        blurred,
-        50,
-        150
-    )
-
-    contours, _ = cv2.findContours(
-        edges,
-        cv2.RETR_LIST,
-        cv2.CHAIN_APPROX_SIMPLE
-    )
-
-    contours = sorted(
-        contours,
-        key=cv2.contourArea,
-        reverse=True
-    )
-
-    for contour in contours[:20]:
-
-        perimeter = cv2.arcLength(
-            contour,
-            True
+        mask = np.full(
+            (height, width),
+            cv2.GC_PR_BGD,
+            dtype=np.uint8
         )
 
-        if perimeter <= 0:
-            continue
+        # Probable document region
+        mask[
+            :,
+            int(width * 0.18):int(width * 0.75)
+        ] = cv2.GC_PR_FGD
 
-        approximation = cv2.approxPolyDP(
-            contour,
-            0.02 * perimeter,
-            True
+        # Definite background seeds
+        mask[:, :int(width * 0.10)] = cv2.GC_BGD
+        mask[:, int(width * 0.90):] = cv2.GC_BGD
+        mask[int(height * 0.95):, :] = cv2.GC_BGD
+
+        background_model = np.zeros((1, 65), np.float64)
+        foreground_model = np.zeros((1, 65), np.float64)
+
+        cv2.grabCut(
+            image,
+            mask,
+            None,
+            background_model,
+            foreground_model,
+            5,
+            cv2.GC_INIT_WITH_MASK
         )
 
-        if len(approximation) != 4:
-            continue
+        foreground = np.where(
+            (mask == cv2.GC_FGD) |
+            (mask == cv2.GC_PR_FGD),
+            255,
+            0
+        ).astype(np.uint8)
 
-        if not cv2.isContourConvex(approximation):
-            continue
+        # ----------------------------------------------------
+        # 2. Collect left and right boundary observations
+        # ----------------------------------------------------
 
-        area = cv2.contourArea(approximation)
+        left_points = []
+        right_points = []
 
-        if area < 0.15 * width * height:
-            continue
+        for y in range(
+            int(height * 0.05),
+            int(height * 0.88),
+            max(1, height // 60)
+        ):
+            xs = np.where(foreground[y] > 0)[0]
 
-        corners = approximation.reshape(
-            4, 2
-        ).astype(np.float32)
+            if len(xs) < width * 0.25:
+                continue
 
-        # Reject boundaries touching the photograph edges.
-        margin = 5
+            left_points.append([xs.min(), y])
+            right_points.append([xs.max(), y])
+
+        # ----------------------------------------------------
+        # 3. Collect top and bottom boundary observations
+        # ----------------------------------------------------
+
+        top_points = []
+        bottom_points = []
+
+        for x in range(
+            int(width * 0.32),
+            int(width * 0.86),
+            max(1, width // 60)
+        ):
+            indices = np.where(foreground[:, x] > 0)[0]
+
+            if len(indices) < height * 0.25:
+                continue
+
+            # Select the longest continuous foreground run.
+            splits = np.where(np.diff(indices) > 1)[0] + 1
+            runs = np.split(indices, splits)
+            run = max(runs, key=len)
+
+            if len(run) < height * 0.25:
+                continue
+
+            top_points.append([x, run[0]])
+            bottom_points.append([x, run[-1]])
+
+        # ----------------------------------------------------
+        # 4. Fit all four document edges
+        # ----------------------------------------------------
+
+        left_line = _fit_document_line(left_points)
+        right_line = _fit_document_line(right_points)
+        top_line = _fit_document_line(top_points)
+        bottom_line = _fit_document_line(bottom_points)
+
+        if any(
+            line is None
+            for line in [
+                left_line,
+                right_line,
+                top_line,
+                bottom_line
+            ]
+        ):
+            raise ValueError("Insufficient boundary observations")
+
+        # ----------------------------------------------------
+        # 5. Calculate four corner intersections
+        # ----------------------------------------------------
+
+        tl = _intersect_document_lines(left_line, top_line)
+        tr = _intersect_document_lines(right_line, top_line)
+        br = _intersect_document_lines(right_line, bottom_line)
+        bl = _intersect_document_lines(left_line, bottom_line)
+
+        if any(
+            point is None
+            for point in [tl, tr, br, bl]
+        ):
+            raise ValueError("Invalid corner intersections")
+
+        corners = np.array(
+            [tl, tr, br, bl],
+            dtype=np.float32
+        )
+
+        # ----------------------------------------------------
+        # 6. Validate the quadrilateral
+        # ----------------------------------------------------
+
+        if not np.all(np.isfinite(corners)):
+            raise ValueError("Non-finite corner coordinates")
 
         if (
-            np.any(corners[:, 0] <= margin)
-            or np.any(corners[:, 1] <= margin)
-            or np.any(corners[:, 0] >= width - margin)
-            or np.any(corners[:, 1] >= height - margin)
+            np.any(corners[:, 0] < 0) or
+            np.any(corners[:, 0] >= width) or
+            np.any(corners[:, 1] < 0) or
+            np.any(corners[:, 1] >= height)
         ):
-            continue
+            raise ValueError("Corners outside image")
 
-        ordered = _order_document_corners(corners)
+        if not cv2.isContourConvex(
+            corners.astype(np.int32).reshape(-1, 1, 2)
+        ):
+            raise ValueError("Non-convex document boundary")
 
-        tl, tr, br, bl = ordered
+        area = abs(cv2.contourArea(corners))
+
+        if area < 0.15 * width * height:
+            raise ValueError("Document area too small")
+
+        # ----------------------------------------------------
+        # 7. Calculate output dimensions
+        # ----------------------------------------------------
 
         top_width = np.linalg.norm(tr - tl)
         bottom_width = np.linalg.norm(br - bl)
@@ -582,19 +711,16 @@ def correct_document_perspective(image: np.ndarray):
         left_height = np.linalg.norm(bl - tl)
         right_height = np.linalg.norm(br - tr)
 
-        output_width = int(
-            max(top_width, bottom_width)
-        )
+        output_width = int(max(top_width, bottom_width))
+        output_height = int(max(left_height, right_height))
 
-        output_height = int(
-            max(left_height, right_height)
-        )
-
-        if output_width < 100 or output_height < 100:
-            continue
-
-        if output_width > width * 3 or output_height > height * 3:
-            continue
+        if (
+            output_width < 100 or
+            output_height < 100 or
+            output_width > width * 3 or
+            output_height > height * 3
+        ):
+            raise ValueError("Invalid corrected image dimensions")
 
         destination = np.array([
             [0, 0],
@@ -603,8 +729,12 @@ def correct_document_perspective(image: np.ndarray):
             [0, output_height - 1]
         ], dtype=np.float32)
 
+        # ----------------------------------------------------
+        # 8. Apply perspective transformation
+        # ----------------------------------------------------
+
         transform = cv2.getPerspectiveTransform(
-            ordered,
+            corners,
             destination
         )
 
@@ -615,15 +745,20 @@ def correct_document_perspective(image: np.ndarray):
         )
 
         if corrected_image is None or corrected_image.size == 0:
-            continue
+            raise ValueError("Perspective transformation failed")
 
         print("Perspective correction successful.")
+        print("Detected corners:", corners.tolist())
 
         return corrected_image, True
 
-    print("No reliable four-corner document detected. Using original image.")
+    except Exception as error:
+        print(
+            "Perspective correction skipped:",
+            str(error)
+        )
 
-    return image, False
+        return image, False
 
 
 # ============================================================
