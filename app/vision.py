@@ -27,11 +27,9 @@ class QualityReport:
     problems: List[str] = field(default_factory=list)
 
     def ok(self) -> bool:
-        """Return True when no quality problems are detected."""
         return len(self.problems) == 0
 
     def hint(self) -> str:
-        """Generate suggestions to improve image quality."""
 
         if not self.problems:
             return "Image quality looks good. Ready for OCR."
@@ -68,7 +66,6 @@ class QualityReport:
         return " ".join(hints)
 
     def summary(self) -> str:
-        """Return a readable summary of image quality."""
 
         detected = (
             ", ".join(self.problems)
@@ -105,15 +102,7 @@ class TextLine:
 # ============================================================
 
 def assess_quality(image: np.ndarray) -> QualityReport:
-    """
-    Analyse an image for blur, brightness, contrast and glare.
-
-    Returns a QualityReport containing measurements,
-    detected problems and an approximate glare location.
-
-    Thresholds are initial heuristics and may need tuning
-    using real book images.
-    """
+    """Analyse an image for blur, brightness, contrast and glare."""
 
     if image is None or image.size == 0:
         raise ValueError("Input image is empty.")
@@ -130,31 +119,19 @@ def assess_quality(image: np.ndarray) -> QualityReport:
     else:
         raise ValueError("Unsupported image format.")
 
-    # 1. Sharpness: variance of Laplacian
     sharpness = float(
         cv2.Laplacian(gray, cv2.CV_64F).var()
     )
 
-    # 2. Brightness: average grayscale intensity
     brightness = float(np.mean(gray))
-
-    # 3. Contrast: standard deviation of grayscale intensity
     contrast = float(np.std(gray))
 
-    # 4. Overexposure: fraction of pixels close to pure white
     clipped_bright = float(
         np.count_nonzero(gray > 245) / gray.size
     )
 
-    # 5. Glare detection
-    # Look for very bright, nearly white regions.
-    glare_mask = cv2.inRange(
-        gray,
-        250,
-        255
-    )
+    glare_mask = cv2.inRange(gray, 250, 255)
 
-    # Remove tiny isolated bright pixels.
     kernel = cv2.getStructuringElement(
         cv2.MORPH_ELLIPSE,
         (7, 7)
@@ -166,7 +143,6 @@ def assess_quality(image: np.ndarray) -> QualityReport:
         kernel
     )
 
-    # Find connected bright regions.
     count, labels, stats, centroids = (
         cv2.connectedComponentsWithStats(
             glare_mask,
@@ -188,21 +164,16 @@ def assess_quality(image: np.ndarray) -> QualityReport:
 
     for index in range(1, count):
 
-        area = int(
-            stats[index, cv2.CC_STAT_AREA]
-        )
+        area = int(stats[index, cv2.CC_STAT_AREA])
 
         if area < minimum_area:
             continue
 
         glare_pixels += area
-
         weighted_x += centroids[index][0] * area
         weighted_y += centroids[index][1] * area
 
-    glare_fraction = float(
-        glare_pixels / total_pixels
-    )
+    glare_fraction = float(glare_pixels / total_pixels)
 
     if glare_pixels > 0:
         glare_center = (
@@ -210,7 +181,6 @@ def assess_quality(image: np.ndarray) -> QualityReport:
             int(weighted_y / glare_pixels)
         )
 
-    # 6. Identify quality problems.
     problems = []
 
     if sharpness < 60:
@@ -378,10 +348,7 @@ def find_text_region(
     image: np.ndarray,
     min_chars: int = 8
 ) -> Tuple[Optional[Box], List[TextLine]]:
-    """
-    Detect readable text and return the bounding box
-    surrounding all recognised text.
-    """
+    """Detect readable text and return its surrounding bounding box."""
 
     lines = [
         line for line in recognize_text(image)
@@ -414,10 +381,7 @@ def enhance_tone(
     image: np.ndarray,
     clahe_clip: float = 2.0
 ) -> np.ndarray:
-    """
-    Reduce uneven lighting and improve local contrast.
-    Image dimensions remain unchanged.
-    """
+    """Reduce uneven lighting and improve local contrast."""
 
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
 
@@ -468,10 +432,7 @@ def enhance_tone(
 
 
 def binarize(image: np.ndarray) -> np.ndarray:
-    """
-    Convert an image into a black-and-white version
-    using adaptive thresholding.
-    """
+    """Convert an image into a black-and-white version."""
 
     gray = (
         cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -494,14 +455,183 @@ def binarize(image: np.ndarray) -> np.ndarray:
 
 
 # ============================================================
+# PART 3: AUTOMATIC DOCUMENT PERSPECTIVE CORRECTION
+# ============================================================
+
+def _order_document_corners(points: np.ndarray) -> np.ndarray:
+    """Order four points as top-left, top-right, bottom-right, bottom-left."""
+
+    center = np.mean(points, axis=0)
+
+    angles = np.arctan2(
+        points[:, 1] - center[1],
+        points[:, 0] - center[0]
+    )
+
+    ordered = points[np.argsort(angles)]
+
+    # Rotate ordering so the top-left point comes first.
+    start = np.argmin(
+        ordered[:, 0] + ordered[:, 1]
+    )
+
+    ordered = np.roll(ordered, -start, axis=0)
+
+    # Ensure the second point is the top-right point.
+    if ordered[1, 0] < ordered[3, 0]:
+        ordered = ordered[[0, 3, 2, 1]]
+
+    return ordered.astype(np.float32)
+
+
+def correct_document_perspective(image: np.ndarray):
+    """
+    Detect a complete document boundary and correct its perspective.
+
+    Returns:
+        corrected_image: Corrected image or original image.
+        corrected: True when perspective correction succeeds.
+    """
+
+    if image is None or image.size == 0:
+        return image, False
+
+    if image.ndim != 3 or image.shape[2] != 3:
+        return image, False
+
+    height, width = image.shape[:2]
+
+    if height < 100 or width < 100:
+        return image, False
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    blurred = cv2.GaussianBlur(
+        gray,
+        (5, 5),
+        0
+    )
+
+    edges = cv2.Canny(
+        blurred,
+        50,
+        150
+    )
+
+    contours, _ = cv2.findContours(
+        edges,
+        cv2.RETR_LIST,
+        cv2.CHAIN_APPROX_SIMPLE
+    )
+
+    contours = sorted(
+        contours,
+        key=cv2.contourArea,
+        reverse=True
+    )
+
+    for contour in contours[:20]:
+
+        perimeter = cv2.arcLength(
+            contour,
+            True
+        )
+
+        if perimeter <= 0:
+            continue
+
+        approximation = cv2.approxPolyDP(
+            contour,
+            0.02 * perimeter,
+            True
+        )
+
+        if len(approximation) != 4:
+            continue
+
+        if not cv2.isContourConvex(approximation):
+            continue
+
+        area = cv2.contourArea(approximation)
+
+        if area < 0.15 * width * height:
+            continue
+
+        corners = approximation.reshape(
+            4, 2
+        ).astype(np.float32)
+
+        # Reject boundaries touching the photograph edges.
+        margin = 5
+
+        if (
+            np.any(corners[:, 0] <= margin)
+            or np.any(corners[:, 1] <= margin)
+            or np.any(corners[:, 0] >= width - margin)
+            or np.any(corners[:, 1] >= height - margin)
+        ):
+            continue
+
+        ordered = _order_document_corners(corners)
+
+        tl, tr, br, bl = ordered
+
+        top_width = np.linalg.norm(tr - tl)
+        bottom_width = np.linalg.norm(br - bl)
+
+        left_height = np.linalg.norm(bl - tl)
+        right_height = np.linalg.norm(br - tr)
+
+        output_width = int(
+            max(top_width, bottom_width)
+        )
+
+        output_height = int(
+            max(left_height, right_height)
+        )
+
+        if output_width < 100 or output_height < 100:
+            continue
+
+        if output_width > width * 3 or output_height > height * 3:
+            continue
+
+        destination = np.array([
+            [0, 0],
+            [output_width - 1, 0],
+            [output_width - 1, output_height - 1],
+            [0, output_height - 1]
+        ], dtype=np.float32)
+
+        transform = cv2.getPerspectiveTransform(
+            ordered,
+            destination
+        )
+
+        corrected_image = cv2.warpPerspective(
+            image,
+            transform,
+            (output_width, output_height)
+        )
+
+        if corrected_image is None or corrected_image.size == 0:
+            continue
+
+        print("Perspective correction successful.")
+
+        return corrected_image, True
+
+    print("No reliable four-corner document detected. Using original image.")
+
+    return image, False
+
+
+# ============================================================
 # PART 1: AUTOMATIC OCR ENHANCEMENT AND SELECTION
 # ============================================================
 
 def read_text_enhanced(image: np.ndarray):
-    """
-    Try OCR on original, tone-enhanced and binarized images.
-    Select the version that produces the strongest text result.
-    """
+    """Try OCR on original, enhanced and binarized images."""
 
     candidates = [
         ("original", image),
@@ -532,4 +662,3 @@ def read_text_enhanced(image: np.ndarray):
             )
 
     return best_text, best_variant
-
